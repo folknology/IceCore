@@ -21,4 +21,6 @@ IceCore Ice40 HX based modular core
 
 ![IceCore Module](https://github.com/folknology/IceCore/blob/master/cad/IceCore.png)
 
+
+![Schematic](https://github.com/folknology/IceCore/blob/master/cad/IceCore-schematic.png)
 Some further [background information](https://forum.mystorm.uk/t/new-product-blackice-mx/551/10) can be found on the [myStorm forum](https://forum.mystorm.uk)
