@@ -14,7 +14,7 @@ IceCore Ice40 HX based modular core
 * Uart/Application specific USB2.0FS
 * Digital video connector
 * SDCard connector
-* 4 Statusr LEDs
+* 4 Status LEDs
 * 4 User LEDs
 * 2 User buttons
 
