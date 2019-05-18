@@ -1,8 +1,8 @@
 # IceCore
 IceCore Ice40 HX based modular core
-
+**Top View**
 ![IceCore Module](https://github.com/folknology/IceCore/blob/master/cad/IceCore.jpg)
-
+**Bottom View**
 ![IceCore Module](https://github.com/folknology/IceCore/blob/master/cad/IceCore-Bottom.jpg)
 
 
