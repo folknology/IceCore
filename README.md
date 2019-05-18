@@ -3,6 +3,9 @@ IceCore Ice40 HX based modular core
 
 ![IceCore Module](https://github.com/folknology/IceCore/blob/master/cad/IceCore.jpg)
 
+![IceCore Module](https://github.com/folknology/IceCore/blob/master/cad/IceCore-bottom.jpg)
+
+
 **Features**
 * Ice40 HX4K - 4K Luts (8K for Yosy), 80/(128)Kbits BRAM, 2 PLLs, NVCM
 * 16Mbit SDRAM 16 bits wide (143Mhz)
