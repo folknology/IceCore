@@ -16718,9 +16718,9 @@ Source: http://www.leotronics.co.uk/Conexcon/Data%20Sheets/sec.%20A/1296ing.pdf<
 <plain>
 <text x="81.28" y="294.64" size="3.81" layer="91">BlackEdge Connectors</text>
 <text x="114.3" y="200.66" size="3.81" layer="91">Video Connector</text>
-<text x="226.06" y="111.76" size="3.81" layer="91">FPGA, Clock &amp; SRAM</text>
-<text x="226.06" y="33.02" size="3.81" layer="91">Memory Flash and SDRAM</text>
-<text x="17.78" y="30.48" size="3.81" layer="91">Microcontroller and debug/monitor usb</text>
+<text x="226.06" y="111.76" size="3.81" layer="91">FPGA Ice40</text>
+<text x="226.06" y="33.02" size="3.81" layer="91">Flash and SDRAM</text>
+<text x="17.78" y="30.48" size="3.81" layer="91">Microcontroller co pro</text>
 <wire x1="220.98" y1="320.04" x2="444.5" y2="320.04" width="0.1524" layer="97"/>
 <wire x1="444.5" y1="320.04" x2="444.5" y2="109.22" width="0.1524" layer="97"/>
 <wire x1="444.5" y1="109.22" x2="220.98" y2="109.22" width="0.1524" layer="97"/>
@@ -16747,10 +16747,8 @@ Source: http://www.leotronics.co.uk/Conexcon/Data%20Sheets/sec.%20A/1296ing.pdf<
 <wire x1="106.68" y1="284.48" x2="106.68" y2="198.12" width="0.1524" layer="97"/>
 <wire x1="106.68" y1="198.12" x2="15.24" y2="198.12" width="0.1524" layer="97"/>
 <wire x1="15.24" y1="198.12" x2="15.24" y2="284.48" width="0.1524" layer="97"/>
-<text x="20.32" y="200.66" size="3.81" layer="91">USB Ice40 Native + SDCard</text>
+<text x="20.32" y="200.66" size="3.81" layer="91">SDCard and Ice40 buttons</text>
 <text x="441.96" y="205.74" size="1.778" layer="91" rot="R90">vccio pin 89 now connected</text>
-<text x="38.1" y="205.74" size="1.778" layer="91">Loose jumper connect tx/rx p2/p3 directly</text>
-<text x="38.1" y="205.74" size="1.778" layer="91">Loose jumper connect tx/rx p2/p3 directly, or use resistors</text>
 <wire x1="12.7" y1="408.94" x2="12.7" y2="292.1" width="0.1524" layer="97"/>
 <text x="274.32" y="337.82" size="1.778" layer="91">Re-calc VCC voltage Rs</text>
 <text x="15.24" y="294.64" size="3.81" layer="91">Indicators</text>
