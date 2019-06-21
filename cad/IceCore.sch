@@ -16761,6 +16761,7 @@ Source: http://www.leotronics.co.uk/Conexcon/Data%20Sheets/sec.%20A/1296ing.pdf<
 <text x="251.46" y="388.62" size="1.778" layer="91">Double check power sequence</text>
 <text x="35.56" y="304.8" size="1.778" layer="91">LEDs  are different orientations</text>
 <text x="116.84" y="93.98" size="1.778" layer="91">Mode</text>
+<text x="454.66" y="27.94" size="2.54" layer="94">Copyright Alan Wood 2019</text>
 </plain>
 <instances>
 <instance part="IC1" gate="A" x="287.02" y="172.72" smashed="yes">

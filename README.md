@@ -18,9 +18,9 @@ IceCore Ice40 HX based modular developement core
 * Uart/Application specific USB2.0FS
 * Digital video connector
 * SDCard connector
-* 4 Status LEDs
-* 4 User LEDs
-* 2 User buttons
+* 4 Coloured Status LEDs
+* 4 Coloured User LEDs
+* 2 User buttons, 1 Mode/Boot button
 
 
 ![IceCore Module](https://github.com/folknology/IceCore/blob/master/cad/IceCore.png)
