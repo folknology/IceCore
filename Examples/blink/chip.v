@@ -19,8 +19,8 @@ module chip (
     output [3:0] led
   );
 
-  // tuurn other leds off (active low)
-  assign led[3:1] = 3'b111;
+  // turn other leds off (active low)
+  assign led[2:0] = 3'b111;
 
   blink my_blink (
     .clk   (clk),

@@ -178,13 +178,13 @@
 .attr src "chip.v:25|blink.v:22|/usr/local/bin/../share/yosys/ice40/cells_map.v:2"
 .gate SB_DFF C=clk D=$techmap\my_blink.$0\count[24:0][24] Q=my_blink.led
 .attr src "chip.v:25|blink.v:22|/usr/local/bin/../share/yosys/ice40/cells_map.v:2"
-.names my_blink.led led[0]
+.names $true led[0]
 1 1
 .names $true led[1]
 1 1
 .names $true led[2]
 1 1
-.names $true led[3]
+.names my_blink.led led[3]
 1 1
 .names clk my_blink.clk
 1 1
