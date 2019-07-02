@@ -1,0 +1,161 @@
+###############################################################################
+#                                                                             #
+# Copyright 2017 myStorm Copyright and related                                #
+# rights are licensed under the Solderpad Hardware License, Version 0.51      #
+# (the “License”); you may not use this file except in compliance with        #
+# the License. You may obtain a copy of the License at                        #
+# http://solderpad.org/licenses/SHL-0.51. Unless required by applicable       #
+# law or agreed to in writing, software, hardware and materials               #
+# distributed under this License is distributed on an “AS IS” BASIS,          #
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or             #
+# implied. See the License for the specific language governing                #
+# permissions and limitations under the License.                              #
+#                                                                             #
+###############################################################################
+
+# User Constraint File for myStorm BlackIce Mx   - Alan Wood 30-04-2019
+
+# HDMI
+set_io PMOD[0] 48 # B80 TD2+
+set_io PMOD[1] 47 # B79 TD2-
+set_io PMOD[2] 45 # B73 TD1+
+set_io PMOD[3] 44 # B72 TD1-
+
+set_io PMOD[4] 43 # B71 TD0+
+set_io PMOD[5] 42 # B64 TD0-
+set_io PMOD[6] 41 # B63 CK+
+set_io PMOD[7] 39 # B61 CK-
+
+#pmod ? lvds pair 25
+set_io PMOD[8] 38 # B57
+set_io PMOD[9] 37 # B56
+set_io PMOD[10] 34 # 25b
+set_io PMOD[11] 33 # 25a
+
+#pmod ? lvds pairs 23 & 24
+set_io PMOD[12] 32 # 24b
+set_io PMOD[13] 31 # 24a
+set_io PMOD[14] 29 # 23b
+set_io PMOD[15] 28 # 23a
+
+#pmod ? lvds pairs 17 & 18
+set_io PMOD[16] 26 # 18b
+set_io PMOD[17] 25 # 18a
+set_io PMOD[18] 24 # 17b
+set_io PMOD[19] 23 # 17a
+
+#pmod ? lvds pairs 13 & 14
+set_io PMOD[20] 22 # 14b
+set_io PMOD[21] 21 # 14a/GBin6
+set_io PMOD[22] 20 # 13b/GBin7
+set_io PMOD[23] 19 #13a
+
+#pmod ? lvds pairs 10 & 12
+set_io PMOD[24] 18 # 12b
+set_io PMOD[25] 17 # 12a
+set_io PMOD[26] 16 # 10b
+set_io PMOD[27] 15 # 10a
+
+#pmod ? lvds pairs 5 & 8
+set_io PMOD[28] 12 # 8b
+set_io PMOD[29] 11 # 8a
+set_io PMOD[30] 10 # 5b
+set_io PMOD[31] 9 # 5a
+
+#pmod ? lvds pairs 3 & 4
+set_io PMOD[32] 8 # 4b
+set_io PMOD[33] 7 # 4a
+set_io PMOD[34] 4 # 3b
+set_io PMOD[35] 3 # 3a
+
+#pmod ? lvds pairs 2
+set_io PMOD[36] 2 # 2b
+set_io PMOD[37] 1 # 2a
+set_io PMOD[38] 144 # T222
+set_io PMOD[39] 143 # T221
+
+#pmod ?
+set_io PMOD[40] 142 # T220
+set_io PMOD[41] 141 # T219
+set_io PMOD[42] 139 # T217
+set_io PMOD[43] 138 # T216
+
+#pmod ?
+set_io PMOD[44] 137 # T215
+set_io PMOD[45] 136 # T214
+set_io PMOD[46] 135 # T213
+set_io PMOD[47] 134 # T212
+
+# Led, buttons and CS
+set_io PMOD[48] 49 # B81/GBin5 L0 Blue led / S2 button
+set_io PMOD[49] 52 # B82/GBin4 L1 Green led / S1 button
+set_io PMOD[50] 55 # B91 L3 Yellow led
+set_io PMOD[51] 56 # B94 cs Red led
+
+# SDCard
+set_io sd3 101
+set_io sdcmd 102
+set_io sdclk 104
+set_io sd0 105
+set_io sd1 106
+
+# SRAM
+set_io A[0] 117
+set_io A[1] 119
+set_io A[2] 121
+set_io A[3] 124
+set_io A[4] 130
+set_io A[5] 125
+set_io A[6] 122
+set_io A[7] 120
+set_io A[8] 118
+set_io A[9] 116
+set_io A[10] 115
+set_io A[11] 114
+
+set_io udqm 94
+set_io ldqm 93
+set_io we 107
+set_io cas 110
+set_io ras 112
+set_io mcs 113
+set_io cke 128
+set_io clk 129
+
+set_io DQ[0] 78
+set_io DQ[1] 79
+set_io DQ[2] 80
+set_io DQ[3] 81
+set_io DQ[4] 82
+set_io DQ[5] 83
+set_io DQ[6] 84
+set_io DQ[7] 85
+set_io DQ[8] 87
+set_io DQ[9] 88
+set_io DQ[10] 90
+set_io DQ[11] 91
+set_io DQ[12] 95
+set_io DQ[13] 96
+set_io DQ[14] 97
+set_io DQ[15] 98
+
+# Dual SPI
+set_io io0 73
+set_io io1 74
+set_io dcs 75
+set_io dsck 76
+
+# QSpi
+set_io hold 63
+set_io wp 64
+set_io mosi 67
+set_io miso 68
+set_io sck 70
+set_io ss 71
+
+# Uart
+set_io tx 61
+set_io rx 62
+
+# Onboard 25Mhz oscillator
+set_io clk 60
