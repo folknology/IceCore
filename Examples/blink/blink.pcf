@@ -1,0 +1,6 @@
+set_io clk 60
+
+set_io led[0] 49 # B81/GBin5 L0 Blue led / S2 button
+set_io led[1] 52 # B82/GBin4 L1 Green led / S1 button
+set_io led[2] 55 # B91 L3 Yellow led
+set_io led[3] 56 # B94 cs Red led
