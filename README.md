@@ -30,4 +30,6 @@ IceCore Ice40 HX based modular developement core
 
 Core modules can be combined with different carrier boards for example [BlackIce Mx](https://github.com/folknology/BlackIceMx)
 
+Supports the [BlackEdge connectivity](https://github.com/folknology/BlackEdge) carriers
+
 Some further [background information](https://forum.mystorm.uk/t/new-product-blackice-mx/551/10) can be found on the [myStorm forum](https://forum.mystorm.uk)
