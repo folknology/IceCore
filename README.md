@@ -8,7 +8,7 @@ IceCore Ice40 HX based modular developement core
 
 
 **Features**
-* Ice40 HX4K - 4K Luts (8K for Yosy), 80/(128)Kbits BRAM, 2 PLLs, NVCM
+* Ice40 HX4K - 4K Luts (8K for Yosys), 80/(128)Kbits BRAM, 2 PLLs, NVCM
 * 16Mbit SDRAM 16 bits wide (143Mhz)
 * 16Mbit Flash QSPI/SPI (100Mhz)
 * 56 General purpose IOs, SPI, Uart, I2C/Can
