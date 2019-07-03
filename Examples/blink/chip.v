@@ -24,7 +24,7 @@ module chip (
 
   blink my_blink (
     .clk   (clk),
-    .led (led[0])
+    .led (led[3])
   );
 
 endmodule
