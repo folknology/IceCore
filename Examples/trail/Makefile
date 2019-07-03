@@ -20,6 +20,7 @@ chip.bin: chip.v trail.v trail.pcf
 
 .PHONY: upload
 upload:
+	stty -F /dev/ttyACM0 raw
 	cat chip.bin >/dev/ttyACM0
 
 .PHONY: clean
