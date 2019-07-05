@@ -97,6 +97,65 @@ set_io PMOD[45] 22 # 14b
 set_io PMOD[46] 25 # 18a
 set_io PMOD[47] 26 # 18b
 
+# SRAM
+set_io A[0] 117
+set_io A[1] 119
+set_io A[2] 121
+set_io A[3] 124
+set_io A[4] 130
+set_io A[5] 125
+set_io A[6] 122
+set_io A[7] 120
+set_io A[8] 118
+set_io A[9] 116
+set_io A[10] 115
+set_io A[11] 114
+
+set_io udqm 94
+set_io ldqm 93
+set_io we 107
+set_io cas 110
+set_io ras 112
+set_io mcs 113
+set_io cke 128
+set_io clk 129
+
+set_io DQ[0] 78
+set_io DQ[1] 79
+set_io DQ[2] 80
+set_io DQ[3] 81
+set_io DQ[4] 82
+set_io DQ[5] 83
+set_io DQ[6] 84
+set_io DQ[7] 85
+set_io DQ[8] 87
+set_io DQ[9] 88
+set_io DQ[10] 90
+set_io DQ[11] 91
+set_io DQ[12] 95
+set_io DQ[13] 96
+set_io DQ[14] 97
+set_io DQ[15] 98
+
+# Dual SPI
+set_io io0 73
+set_io io1 74
+set_io dcs 75
+set_io dsck 76
+
+# QSpi
+set_io hold 63
+set_io wp 64
+set_io mosi 67
+set_io miso 68
+set_io sck 70
+set_io ss 71
+
+# Uart
+set_io tx 61
+set_io rx 62
+
+
 set_io yellow_led 55
 set_io red_led 56
 
