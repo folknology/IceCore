@@ -118,7 +118,7 @@ set_io cas 110
 set_io ras 112
 set_io mcs 113
 set_io cke 128
-set_io clk 129
+set_io rclk 129
 
 set_io DQ[0] 78
 set_io DQ[1] 79
