@@ -20,8 +20,9 @@ IceCore Ice40 HX based modular developement core
 * SDCard connector
 * 4 Coloured Status LEDs
 * 4 Coloured User LEDs
-* 2 User buttons, 1 Mode/Boot button
+* 2 User buttons, 1 Mode/Boot buttoni
 
+[Get it from Tindie as part of BlackIce Mx](https://www.tindie.com/products/Folknology/blackice-mx/)
 
 ![IceCore Module](https://github.com/folknology/IceCore/blob/master/cad/IceCore.png)
 
