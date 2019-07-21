@@ -85,6 +85,27 @@ void SystemClock_Config(void);
 
 /* USER CODE BEGIN 1 */
 
+#include "usbd_cdc.h"
+/* @brief  static single allocation.
+* @param  size: size of allocated memory
+* @retval None
+*/
+void *USBD_static_malloc(uint32_t size)
+{
+  static uint32_t mem[(sizeof(USBD_CDC_HandleTypeDef)/4)+1];// On 32-bit boundry 
+  return mem;
+}
+
+/**
+  * @brief  Dummy memory free
+  * @param  *p pointer to allocated  memory address
+  * @retval None
+  */
+void USBD_static_free(void *p)
+{
+
+}
+
 /* USER CODE END 1 */
 
 /*******************************************************************************
@@ -122,30 +143,6 @@ void HAL_PCD_MspInit(PCD_HandleTypeDef* pcdHandle)
 
   /* USER CODE END USB_OTG_FS_MspInit 1 */
   }
-  else if(pcdHandle->Instance==USB_OTG_HS)
-  {
-  /* USER CODE BEGIN USB_OTG_HS_MspInit 0 */
-
-  /* USER CODE END USB_OTG_HS_MspInit 0 */
-  
-    /**USB_OTG_HS GPIO Configuration    
-    PB14     ------> USB_OTG_HS_DM
-    PB15     ------> USB_OTG_HS_DP 
-    */
-    GPIO_InitStruct.Pin = GPIO_PIN_14|GPIO_PIN_15;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-    GPIO_InitStruct.Alternate = GPIO_AF12_OTG_HS_FS;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-    /* Peripheral clock enable */
-    __HAL_RCC_USB_OTG_HS_CLK_ENABLE();
-    __HAL_RCC_USB_OTG_HS_ULPI_CLK_ENABLE();
-  /* USER CODE BEGIN USB_OTG_HS_MspInit 1 */
-
-  /* USER CODE END USB_OTG_HS_MspInit 1 */
-  }
 }
 
 void HAL_PCD_MspDeInit(PCD_HandleTypeDef* pcdHandle)
@@ -170,25 +167,6 @@ void HAL_PCD_MspDeInit(PCD_HandleTypeDef* pcdHandle)
   /* USER CODE BEGIN USB_OTG_FS_MspDeInit 1 */
 
   /* USER CODE END USB_OTG_FS_MspDeInit 1 */
-  }
-  else if(pcdHandle->Instance==USB_OTG_HS)
-  {
-  /* USER CODE BEGIN USB_OTG_HS_MspDeInit 0 */
-
-  /* USER CODE END USB_OTG_HS_MspDeInit 0 */
-    /* Disable Peripheral clock */
-    __HAL_RCC_USB_OTG_HS_CLK_DISABLE();
-    __HAL_RCC_USB_OTG_HS_ULPI_CLK_DISABLE();
-  
-    /**USB_OTG_HS GPIO Configuration    
-    PB14     ------> USB_OTG_HS_DM
-    PB15     ------> USB_OTG_HS_DP 
-    */
-    HAL_GPIO_DeInit(GPIOB, GPIO_PIN_14|GPIO_PIN_15);
-
-  /* USER CODE BEGIN USB_OTG_HS_MspDeInit 1 */
-
-  /* USER CODE END USB_OTG_HS_MspDeInit 1 */
   }
 }
 

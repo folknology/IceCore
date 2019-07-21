@@ -125,7 +125,7 @@
 #define USBD_malloc         (uint32_t *)USBD_static_malloc
 
 /** Alias for memory release. */
-#define USBD_free           (uint32_t *)USBD_static_malloc
+#define USBD_free           USBD_static_free
 
 /** Alias for memory set. */
 #define USBD_memset         memset
