@@ -81,11 +81,12 @@ SPI_HandleTypeDef hspi3;
 TIM_HandleTypeDef htim6;
 
 UART_HandleTypeDef huart1;
-DMA_HandleTypeDef hdma_usart1_rx;
 DMA_HandleTypeDef hdma_usart1_tx;
 
 /* USER CODE BEGIN PV */
-
+#ifdef __cplusplus
+ extern "C" {
+#endif
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -105,8 +106,10 @@ static void MX_TIM6_Init(void);
 static void MX_QUADSPI_Init(void);
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
+
 extern void setup(void);
 extern void loop(void);
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -624,12 +627,12 @@ static void MX_SPI3_Init(void)
   /* USER CODE END SPI3_Init 1 */
   /* SPI3 parameter configuration*/
   hspi3.Instance = SPI3;
-  hspi3.Init.Mode = SPI_MODE_SLAVE;
+  hspi3.Init.Mode = SPI_MODE_MASTER;
   hspi3.Init.Direction = SPI_DIRECTION_2LINES;
   hspi3.Init.DataSize = SPI_DATASIZE_8BIT;
   hspi3.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi3.Init.CLKPhase = SPI_PHASE_1EDGE;
-  hspi3.Init.NSS = SPI_NSS_HARD_INPUT;
+  hspi3.Init.NSS = SPI_NSS_SOFT;
   hspi3.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi3.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi3.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -661,13 +664,13 @@ static void MX_TIM6_Init(void)
   TIM_MasterConfigTypeDef sMasterConfig = {0};
 
   /* USER CODE BEGIN TIM6_Init 1 */
-
+  // TCLK 108Mhz 
   /* USER CODE END TIM6_Init 1 */
   htim6.Instance = TIM6;
-  htim6.Init.Prescaler = 0;
+  htim6.Init.Prescaler = 7;
   htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim6.Init.Period = 0;
-  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  htim6.Init.Period =  20000;
+  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
   {
     Error_Handler();
@@ -679,7 +682,8 @@ static void MX_TIM6_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN TIM6_Init 2 */
-
+  HAL_NVIC_SetPriority(TIM6_DAC_IRQn,0,0);
+  HAL_NVIC_EnableIRQ(TIM6_DAC_IRQn);
   /* USER CODE END TIM6_Init 2 */
 
 }
@@ -728,9 +732,6 @@ static void MX_DMA_Init(void)
   __HAL_RCC_DMA2_CLK_ENABLE();
 
   /* DMA interrupt init */
-  /* DMA2_Stream2_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
   /* DMA2_Stream7_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream7_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream7_IRQn);
@@ -762,8 +763,8 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(ICE40_SPI_CS_GPIO_Port, ICE40_SPI_CS_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : ICE40_CRST_Pin HDMI_CEC_Pin ICE40_HOLD_Pin ICE40_WP_Pin */
-  GPIO_InitStruct.Pin = ICE40_CRST_Pin|HDMI_CEC_Pin|ICE40_HOLD_Pin|ICE40_WP_Pin;
+  /*Configure GPIO pins : ICE40_CRST_Pin HDMI_CEC_Pin */
+  GPIO_InitStruct.Pin = ICE40_CRST_Pin|HDMI_CEC_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -796,9 +797,16 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF0_MCO;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
+  /*Configure GPIO pins : ICE40_HOLD_Pin ICE40_WP_Pin */
+  GPIO_InitStruct.Pin = ICE40_HOLD_Pin|ICE40_WP_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
   /*Configure GPIO pin : ICE40_SPI_CS_Pin */
   GPIO_InitStruct.Pin = ICE40_SPI_CS_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(ICE40_SPI_CS_GPIO_Port, &GPIO_InitStruct);
@@ -812,7 +820,9 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+#ifdef __cplusplus
+}
+#endif
 /* USER CODE END 4 */
 
 /**

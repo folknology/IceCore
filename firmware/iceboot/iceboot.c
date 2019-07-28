@@ -70,7 +70,7 @@ extern SPI_HandleTypeDef hspi3;
 extern USBD_HandleTypeDef hUsbDeviceFS;
 extern UART_HandleTypeDef huart1;
 
-#define DMA_BYTES 20
+#define DMA_BYTES 2048
 #define DMAH (DMA_BYTES / 2)
 uint8_t rxdmabuf[DMA_BYTES];
 uint8_t urxdmabuf[64];
@@ -164,10 +164,12 @@ cdc_puts(char *s)
 
 	for (p = s; *p; p++)
 		;
-	CDC_Transmit_FS((unsigned char*)s, p - s);
-	if (p > s && p[-1] == '\n')
-		cdc_puts("\r");
+// 	CDC_Transmit_FS((uint8_t *)s, p - s);
+// 	if (p > s && p[-1] == '\n')
+// 		cdc_puts("\r");
 }
+
+
 
 /*
  * Read one byte from input fifo, waiting until one is available
@@ -180,7 +182,7 @@ cdc_getc(uint8_t *b)
 	return fifo_get(&in_fifo, b);
 }
 
-void flash_QSPI_Enable(){
+void flash_SPI_Enable(){
  // GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /*Configure GPIO pins : ICE40_HOLD_Pin ICE40_WP_Pin as input to free QSPI*/
@@ -190,8 +192,14 @@ void flash_QSPI_Enable(){
 //   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 //   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  HAL_GPIO_DeInit(GPIOC, ICE40_HOLD_Pin);
-  HAL_GPIO_DeInit(GPIOC, ICE40_WP_Pin);
+	// if(flashmode == WRITE) {
+	// 	HAL_GPIO_DeInit(GPIOC, ICE40_HOLD_Pin);
+  	// 	HAL_GPIO_DeInit(GPIOC, ICE40_WP_Pin);
+	// }
+
+
+  
+
   HAL_GPIO_DeInit(SPI3_MISO_GPIO_Port, SPI3_MISO_Pin);
   HAL_GPIO_DeInit(SPI3_SCK_GPIO_Port, SPI3_SCK_Pin);
   HAL_GPIO_DeInit(ICE40_SPI_CS_GPIO_Port, ICE40_SPI_CS_Pin);
@@ -199,17 +207,22 @@ void flash_QSPI_Enable(){
   HAL_SPI_MspInit(&hspi3);
 }
 
-void flash_QSPI_Disable(){
+void flash_SPI_Disable(){
   GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   HAL_SPI_MspDeInit(&hspi3);
 
-  /*Configure GPIO pins : ICE40_HOLD_Pin ICE40_WP_Pin as low to disable spi*/
-  GPIO_InitStruct.Pin = ICE40_HOLD_Pin|ICE40_WP_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+//   if(flashmode == WRITE) {
+// 	/*Configure GPIO pins : ICE40_HOLD_Pin ICE40_WP_Pin as low to disable spi*/
+// 	GPIO_InitStruct.Pin = ICE40_HOLD_Pin|ICE40_WP_Pin;
+// 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+// 	GPIO_InitStruct.Pull = GPIO_NOPULL;
+// 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+// 	HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+// 	protect_flash();
+//   	hold_flash();
+//   }
 
   GPIO_InitStruct.Pin = SPI3_MISO_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -228,52 +241,74 @@ void flash_QSPI_Disable(){
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(ICE40_SPI_CS_GPIO_Port, &GPIO_InitStruct);
-
-  protect_flash();
-  hold_flash();
 }
 
 
 
-/*
- * Tri-state spi3 pins which are shared with ice40 LED1-4 signals
- */
-static void
-spi_detach(void)
-{
-	HAL_SPI_MspDeInit(&hspi3);
-	HAL_GPIO_DeInit(SPI3_MISO_GPIO_Port, SPI3_MISO_Pin);
-	HAL_GPIO_DeInit(SPI3_SCK_GPIO_Port, SPI3_SCK_Pin);
-	HAL_GPIO_DeInit(ICE40_SPI_CS_GPIO_Port, ICE40_SPI_CS_Pin);
-}
+// /*
+//  * Tri-state spi3 pins which are shared with ice40 LED1-4 signals
+//  */
+// static void
+// spi_detach(void)
+// {
+// 	HAL_SPI_MspDeInit(&hspi3);
+// 	HAL_GPIO_DeInit(SPI3_MISO_GPIO_Port, SPI3_MISO_Pin);
+// 	HAL_GPIO_DeInit(SPI3_SCK_GPIO_Port, SPI3_SCK_Pin);
+// 	HAL_GPIO_DeInit(ICE40_SPI_CS_GPIO_Port, ICE40_SPI_CS_Pin);
+// }
 
-/*
- * Reconnect the spi3 pins
- */
-static void
-spi_reattach(void)
-{
-	GPIO_InitTypeDef g;
+// /*
+//  * Reconnect the spi3 pins
+//  */
+// static void
+// spi_reattach(void)
+// {
+// 	GPIO_InitTypeDef g;
 
-	HAL_SPI_MspInit(&hspi3);
+// 	HAL_SPI_MspInit(&hspi3);
 
-	g.Pin = SPI3_MISO_Pin;
-	g.Mode = GPIO_MODE_OUTPUT_PP;
-	g.Pull = GPIO_NOPULL;
-	g.Speed = GPIO_SPEED_FREQ_LOW;
-	HAL_GPIO_Init(SPI3_MISO_GPIO_Port, &g);
+// 	g.Pin = SPI3_MISO_Pin;
+// 	g.Mode = GPIO_MODE_OUTPUT_PP;
+// 	g.Pull = GPIO_NOPULL;
+// 	g.Speed = GPIO_SPEED_FREQ_LOW;
+// 	HAL_GPIO_Init(SPI3_MISO_GPIO_Port, &g);
 
-	g.Pin = SPI3_SCK_Pin;
-	g.Mode = GPIO_MODE_OUTPUT_PP;
-	g.Pull = GPIO_NOPULL;
-	g.Speed = GPIO_SPEED_FREQ_LOW;
-	HAL_GPIO_Init(SPI3_SCK_GPIO_Port, &g);
+// 	g.Pin = SPI3_SCK_Pin;
+// 	g.Mode = GPIO_MODE_OUTPUT_PP;
+// 	g.Pull = GPIO_NOPULL;
+// 	g.Speed = GPIO_SPEED_FREQ_LOW;
+// 	HAL_GPIO_Init(SPI3_SCK_GPIO_Port, &g);
 
-	g.Pin = ICE40_SPI_CS_Pin;
-	g.Mode = GPIO_MODE_OUTPUT_PP;
-	g.Pull = GPIO_NOPULL;
-	g.Speed = GPIO_SPEED_FREQ_LOW;
-	HAL_GPIO_Init(ICE40_SPI_CS_GPIO_Port, &g);
+// 	g.Pin = ICE40_SPI_CS_Pin;
+// 	g.Mode = GPIO_MODE_OUTPUT_PP;
+// 	g.Pull = GPIO_NOPULL;
+// 	g.Speed = GPIO_SPEED_FREQ_LOW;
+// 	HAL_GPIO_Init(ICE40_SPI_CS_GPIO_Port, &g);
+// }
+
+
+// In tegrate with below to create ice40_reset(mode) where mode is master or slave boot for Ice40
+static int ice40_reset_flashboot(uint8_t addr){ 
+	int timeout = 100;
+	if(addr) { // not hold. and WP CBSDEL=01, boot from image 1
+		release_flash();
+		protect_flash();
+	} else { // else boot zero CBSDEL=00
+		hold_flash();
+		protect_flash();
+	}
+	gpio_low(ICE40_CRST);
+	gpio_high(ICE40_SPI_CS); // pulled up by default BTW
+	
+	while(timeout--)
+		if(gpio_ishigh(ICE40_CRST))
+		return;
+	gpio_high(ICE40_CRST);
+
+	free_flash();
+	release_flash();
+
+	return OK;
 }
 
 /*
@@ -285,6 +320,9 @@ ice40_reset(void)
 	int timeout = 100;
 	gpio_low(ICE40_CRST);
 	gpio_low(ICE40_SPI_CS);
+
+	protect_flash();
+  	hold_flash();
 
 	//HAL_Delay(1);
 	while(timeout--)
@@ -307,6 +345,9 @@ ice40_reset(void)
 		if(gpio_ishigh(ICE40_SPI_CS))
 		return;
 	//HAL_Delay(2);
+
+	free_flash();
+	release_flash();
 
 	return OK;
 }
@@ -480,9 +521,9 @@ usbcdc_rxcallback(uint8_t *data, uint32_t *len)
 				nbytes = 0;
 				temp = 1;
 				status_led_high();
-				flash_QSPI_Disable;//spi_reattach();
+				flash_SPI_Disable;//spi_reattach();
 				if (err = ice40_reset()) 
-					flash_QSPI_Enable; //spi_detach();
+					flash_SPI_Enable; //spi_detach();
 				else { // Write bytes (assumes *len < NBYTES)
 					nbytes += *len - 4;
 					ice_write(img, *len - 4);
@@ -490,6 +531,8 @@ usbcdc_rxcallback(uint8_t *data, uint32_t *len)
 				}
 			} else { 
 				HAL_UART_Transmit(&huart1, data, *len, HAL_UART_TIMEOUT_VALUE);
+				
+				mode_led_toggle();
 				//HAL_UART_Transmit_DMA(&huart1, data, 0x1111U);
 				// return OK;
 				//if(temp) mode_led_low();
@@ -503,7 +546,7 @@ usbcdc_rxcallback(uint8_t *data, uint32_t *len)
 
 	if(nbytes >= NBYTES) {
 		status_led(err = ice40_configdone());
-		flash_QSPI_Enable; //spi_detach();
+		flash_SPI_Enable; //spi_detach();
 		nbytes = 0;
 		state = DETECT;
 	}
@@ -522,7 +565,7 @@ usbcdc_rxcallback(uint8_t *data, uint32_t *len)
 	// 	if (!cdc_stopped)
 	// 		USBD_CDC_ReceivePacket(&hUsbDeviceFS);
 	// 	}
-	return OK;
+	return USBD_OK;
 }
 
 /**
@@ -738,21 +781,23 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
   /* Prevent unused argument(s) compilation warning */
   UNUSED(huart);
-  err = 1;
-  //cdc_puts("Uart error\n");
+	err = huart->ErrorCode;
+//   cdc_puts("Uart error ");
+  //cdc_puts('0' + huart->ErrorCode);
+//   cdc_puts("\n");
   /* NOTE : This function should not be modified, when the callback is needed,
             the HAL_UART_ErrorCallback can be implemented in the user file
    */
 }
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{	
-  /* Prevent unused argument(s) compilation warning */
-  UNUSED(huart);
-  CDC_Transmit_FS((unsigned char *)rxdmabuf, DMA_BYTES);
-  if(err = HAL_UART_Receive_DMA(&huart1, (uint8_t *)rxdmabuf, DMA_BYTES))
-		mode_led_low();
-}
+// void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+// {	
+//   /* Prevent unused argument(s) compilation warning */
+//   UNUSED(huart);
+//   CDC_Transmit_FS((unsigned char *)rxdmabuf, DMA_BYTES);
+//   if(err = HAL_UART_Receive_DMA(&huart1, (uint8_t *)rxdmabuf, DMA_BYTES))
+// 		mode_led_low();
+// }
 
 // void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 // {	
@@ -765,6 +810,22 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 // 	  dmai = dmai ? 0 : DMAH -1;
 // }
 
+#define RX 8
+uint8_t rx, b[RX];
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{	
+  /* Prevent unused argument(s) compilation warning */
+  UNUSED(huart);
+  //rx = (rx == RX) ? 0 : rx + 1;
+  if(rx == RX - 1) {
+	  rx = 0;
+	  CDC_Transmit_FS((unsigned char *)b, RX);
+  }
+  //err = HAL_UART_Receive_IT(huart, (uint8_t *)b, rx++);
+  HAL_UART_Receive_IT(huart, (uint8_t *)(b + rx++), 1);
+}
+
 /*
  * Setup function (called once at powerup)
  *	- flush any input in uart buffer
@@ -774,7 +835,22 @@ void
 setup(void)
 {
 	mode_led_high();
-	status_led_low();
+
+	// Enable QSPI flash
+	// ice40 reset flash boot
+	// wait for CDONE
+	// Disable QSPI Flash
+	flash_SPI_Enable();
+	ice40_reset_flashboot(0);
+	HAL_Delay(1000);
+	if(!gpio_ishigh(ICE40_CDONE)){
+		err = ICE_ERROR;
+		cdc_puts("Flash Boot Error\n");
+	} else {
+		status_led_low();
+	}
+	flash_SPI_Disable();
+
 	cdc_puts(VER);
 	cdc_puts("\n");
 	crc_reset();
@@ -783,8 +859,13 @@ setup(void)
 	//flash_QSPI_Disable();
 	// protect_flash();
 	// hold_flash();
-	if(err = HAL_UART_Receive_DMA(&huart1, (uint8_t *)rxdmabuf, DMA_BYTES))
-		mode_led_low();
+
+	// if(err = HAL_UART_Receive_DMA(&huart1, (uint8_t *)rxdmabuf, DMA_BYTES))
+	// 	mode_led_low();
+
+	if(err = HAL_UART_Receive_IT(&huart1, (uint8_t *)(b + rx++), 1))
+		//mode_led_low();
+
 	USBD_CDC_ReceivePacket(&hUsbDeviceFS);
 }
 
@@ -796,7 +877,7 @@ setup(void)
 void
 loop(void)
 {
-	uint8_t b = 0;
+	// uint8_t b = 0;
 
 	if (err) {
 		status_led_toggle();
@@ -815,6 +896,10 @@ loop(void)
 		//reset_fifo();
 		HAL_Delay(1000);
 	}
+
+	// if(rx == 7) {
+	// 	CDC_Transmit_FS((unsigned char *)b, 8);
+	// }
 
 	// if(err == HAL_UART_Receive(&huart1, (uint8_t *)&b, 1, HAL_UART_TIMEOUT_VALUE))
 	// 	CDC_Transmit_FS((unsigned char *)&b, 1);

@@ -81,7 +81,6 @@ SPI_HandleTypeDef hspi3;
 TIM_HandleTypeDef htim6;
 
 UART_HandleTypeDef huart1;
-DMA_HandleTypeDef hdma_usart1_rx;
 DMA_HandleTypeDef hdma_usart1_tx;
 
 /* USER CODE BEGIN PV */
@@ -666,7 +665,7 @@ static void MX_TIM6_Init(void)
   htim6.Instance = TIM6;
   htim6.Init.Prescaler = 0;
   htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim6.Init.Period = 0;
+  htim6.Init.Period = 12000;
   htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
   {
@@ -728,9 +727,6 @@ static void MX_DMA_Init(void)
   __HAL_RCC_DMA2_CLK_ENABLE();
 
   /* DMA interrupt init */
-  /* DMA2_Stream2_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
   /* DMA2_Stream7_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream7_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream7_IRQn);
@@ -762,8 +758,8 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(ICE40_SPI_CS_GPIO_Port, ICE40_SPI_CS_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : ICE40_CRST_Pin HDMI_CEC_Pin ICE40_HOLD_Pin ICE40_WP_Pin */
-  GPIO_InitStruct.Pin = ICE40_CRST_Pin|HDMI_CEC_Pin|ICE40_HOLD_Pin|ICE40_WP_Pin;
+  /*Configure GPIO pins : ICE40_CRST_Pin HDMI_CEC_Pin */
+  GPIO_InitStruct.Pin = ICE40_CRST_Pin|HDMI_CEC_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -795,6 +791,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.Alternate = GPIO_AF0_MCO;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : ICE40_HOLD_Pin ICE40_WP_Pin */
+  GPIO_InitStruct.Pin = ICE40_HOLD_Pin|ICE40_WP_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pin : ICE40_SPI_CS_Pin */
   GPIO_InitStruct.Pin = ICE40_SPI_CS_Pin;
