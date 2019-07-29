@@ -675,12 +675,7 @@ static void MX_TIM6_Init(void)
   {
     Error_Handler();
   }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim6, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
+
   /* USER CODE BEGIN TIM6_Init 2 */
   HAL_NVIC_SetPriority(TIM6_DAC_IRQn,0,0);
   HAL_NVIC_EnableIRQ(TIM6_DAC_IRQn);

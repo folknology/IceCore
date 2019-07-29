@@ -1,0 +1,6 @@
+set_io i_clk 60
+set_io i_uart_rx 61 # ST Uart TX
+set_io o_uart_tx 62 # ST Uart RX
+
+set_io o_led[0] 55 # B91 L3 Yellow led
+set_io o_led[1] 56 # B94 cs Red led
