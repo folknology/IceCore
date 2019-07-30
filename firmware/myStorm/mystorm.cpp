@@ -178,6 +178,7 @@ loop(void)
 		if(err) {
 			error_report(buffer, 16);
 			cdc_puts(buffer);
+			err = 0;
 		} else {
 			// Eventually flash writing will go here, for now just report flash id
 			if(flash_id(buffer, 16))
