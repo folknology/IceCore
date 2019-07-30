@@ -413,10 +413,12 @@ uint8_t Fpga::reset(uint8_t bit_src){
 			hold_flash();
 			break;
 		case FLASH0 : // CBSDEL=00 Flash
+			gpio_high(ICE40_SPI_CS);
 			hold_flash();
 			protect_flash();
 			break;
 		case FLASH1 : // CBSDEL=01 Flash
+			gpio_high(ICE40_SPI_CS);
 			release_flash();
 			protect_flash();
 			break;
