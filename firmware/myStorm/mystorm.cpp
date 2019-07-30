@@ -163,11 +163,11 @@ loop(void)
 	// 		status_led_low();
 	// 	}
 	// }
-	if(err) {
-		error_report(buffer, 16);
-		cdc_puts(buffer);
-		err = 0;
-	}
+	// if(err) {
+	// 	error_report(buffer, 16);
+	// 	cdc_puts(buffer);
+	// 	err = 0;
+	// }
 
 	//cdc_puts("Waiting for USB serial\n");
 
