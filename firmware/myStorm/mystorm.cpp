@@ -277,8 +277,8 @@ uint8_t error_report(char *buf, int len){
 	buf[6] = 'R';
 	buf[7] = 'R';
 	buf[8] = 'S';
-	buf[4] = '\n';
-	buf[5] = '\0';
+	buf[9] = '\n';
+	buf[10] = '\0';
 
 	return 6;
 }
