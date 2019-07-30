@@ -115,7 +115,7 @@ setup(void)
 	mode_led_high();
 
 	// Initiate Ice40 boot from flash
-	Ice40.reset(FLASH0);
+	Ice40.reset(FLASH1);
 	HAL_Delay(1000);
 	if(!gpio_ishigh(ICE40_CDONE)){
 		err = ICE_ERROR;
