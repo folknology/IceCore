@@ -223,6 +223,7 @@ uint8_t flash_id(char *buf, int len){
 
 	release_flash();
 	free_flash();
+	flash_SPI_Enable();
 
 	gpio_low(ICE40_SPI_CS);
 	flash.write(&uCommand,1);
@@ -245,6 +246,7 @@ uint8_t flash_id(char *buf, int len){
 	}
 	buf[l1 -1] = '\n';
 	buf[l1] = '\0';
+	flash_SPI_Disable();
 
 	return len;
 }
@@ -267,14 +269,15 @@ static int8_t usbcdc_rxcallback(uint8_t *data, uint32_t *len){
 
 	USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &data[0]);
 
-	if(!Ice40.stream(data, *len)){
-		// HAL_UART_Transmit(&huart1, data, *len, HAL_UART_TIMEOUT_VALUE);
-		// mode_led_toggle();
+	if(*len)
+		if(!Ice40.stream(data, *len)){
+			// HAL_UART_Transmit(&huart1, data, *len, HAL_UART_TIMEOUT_VALUE);
+			// mode_led_toggle();
 
-		HAL_UART_Transmit_DMA(&huart1, data, *len);
-		return USBD_OK;
-		//if(temp) mode_led_low();
-	}
+			HAL_UART_Transmit_DMA(&huart1, data, *len);
+			return USBD_OK;
+			//if(temp) mode_led_low();
+		}
 
 	USBD_CDC_ReceivePacket(&hUsbDeviceFS);
 
