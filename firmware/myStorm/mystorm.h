@@ -1,3 +1,5 @@
+#define SPI3_MOSI_Pin GPIO_PIN_5
+#define SPI3_MOSI_GPIO_Port GPIOB
 #define SPI3_MISO_Pin GPIO_PIN_4
 #define SPI3_MISO_GPIO_Port GPIOB
 #define SPI3_SCK_Pin GPIO_PIN_3

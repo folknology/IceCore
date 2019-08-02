@@ -146,7 +146,12 @@ void BusFault_Handler(void)
 void UsageFault_Handler(void)
 {
   /* USER CODE BEGIN UsageFault_IRQn 0 */
-
+                HAL_GPIO_TogglePin(STATUS_LED_GPIO_Port, STATUS_LED_Pin);
+      uint32_t timeout = 10000;
+      while (HAL_GPIO_ReadPin(ICE40_CDONE_GPIO_Port, ICE40_CDONE_Pin) == GPIO_PIN_SET) {
+        if (--timeout == 0)
+          break;
+      }
   /* USER CODE END UsageFault_IRQn 0 */
   while (1)
   {

@@ -93,18 +93,42 @@ class Fpga {
 };
 
 class Flash {
+	uint32_t NBYTES;
+	uint32_t addr;
+	uint8_t block;
+	uint8_t state;
+	uint32_t nbytes;
+	union SIG sig =  {0x7E, 0xAA, 0x99, 0x7E} ;
+
 	SPI_HandleTypeDef *spi;
+	static const uint8_t WPGE = 0x02;
+	static const uint8_t RPGE = 0x03;
+	static const uint8_t STATUS = 0x05;
+	static const uint8_t WEN = 0x06;
+	static const uint8_t WAKEUP = 0xAB;
+	static const uint8_t ERASE32 = 0x52;
+	static const uint8_t ERASE64 = 0xD8;
+	static const uint8_t ERASEBLK = 0xC7;
 
 	public:
-	 Flash(SPI_HandleTypeDef *hspi);
-	 uint8_t write(uint8_t *p, uint32_t len);
-	 uint8_t read(uint8_t *p, uint32_t len);
-	 uint8_t write_read(uint8_t *tx, uint8_t *rx, uint32_t len);
+	Flash(SPI_HandleTypeDef *hspi);
+	uint8_t erase(void);
+	uint8_t erase(uint32_t addr, uint16_t size);
+	uint8_t status(uint8_t timeout);
+	uint8_t write(uint8_t *p, uint32_t len); // make an SPI class for this
+	uint8_t read(uint8_t *p, uint32_t len); // make an SPI class for this
+	uint8_t write(uint32_t addr, uint8_t *data, uint32_t len); // make an SPI class for this
+	uint8_t write_page(uint32_t addr, uint8_t *data);
+	uint8_t write_page(uint32_t addr, uint8_t *data, uint8_t len);
+	uint8_t write_read(uint8_t *tx, uint8_t *rx, uint32_t len);
+	uint8_t erase_write(uint8_t *data, uint8_t len, uint16_t esize);
+	uint8_t stream(uint8_t *data, uint32_t len);
 };
 
 
 /* global objects */
 Fpga Ice40(IMGSIZE);
+Flash flash(&hspi3);
 
 /*
  * Setup function (called once at powerup)
@@ -112,9 +136,11 @@ Fpga Ice40(IMGSIZE);
 void
 setup(void)
 {
+
 	mode_led_high();
 
 	// Initiate Ice40 boot from flash
+	flash_SPI_Enable();
 	Ice40.reset(FLASH1);
 	HAL_Delay(1000);
 	if(!gpio_ishigh(ICE40_CDONE)){
@@ -123,7 +149,7 @@ setup(void)
 	} else {
 		status_led_low();
 	}
-	flash_SPI_Disable();
+	//flash_SPI_Disable();
 
 	cdc_puts(VER);
 	cdc_puts("\n");
@@ -175,15 +201,15 @@ loop(void)
 		mode_led_toggle();
 		mode = mode ? 0 : 1;
 		
-		if(err) {
-			error_report(buffer, 16);
-			cdc_puts(buffer);
-			err = 0;
-		} else {
+		// if(err) {
+		// 	error_report(buffer, 16);
+		// 	cdc_puts(buffer);
+		// 	err = 0;
+		// } else {
 			// Eventually flash writing will go here, for now just report flash id
-			if(flash_id(buffer, 16))
-				cdc_puts(buffer);
-		}
+			// if(flash_id(buffer, 16))
+			// 	cdc_puts(buffer);
+		// }
 
 		HAL_Delay(1000);
 	}
@@ -205,28 +231,44 @@ static void cdc_puts(char *s){
 
 void flash_SPI_Enable(void){
 
-  HAL_GPIO_DeInit(SPI3_MISO_GPIO_Port, SPI3_MISO_Pin);
-  HAL_GPIO_DeInit(SPI3_SCK_GPIO_Port, SPI3_SCK_Pin);
+	HAL_GPIO_DeInit(GPIOB, SPI3_SCK_Pin|SPI3_MISO_Pin|SPI3_MOSI_Pin);
 
-  HAL_SPI_MspInit(&hspi3);
+	GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+	/* Peripheral clock enable */
+	__HAL_RCC_SPI3_CLK_ENABLE();
+
+	__HAL_RCC_GPIOB_CLK_ENABLE();
+
+	GPIO_InitStruct.Pin = SPI3_SCK_Pin|SPI3_MISO_Pin|SPI3_MOSI_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+	GPIO_InitStruct.Alternate = GPIO_AF6_SPI3;
+	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
 }
 
 void flash_SPI_Disable(void){
-  GPIO_InitTypeDef GPIO_InitStruct = {0};
 
-  HAL_SPI_MspDeInit(&hspi3);
+	__HAL_RCC_SPI3_CLK_DISABLE();
 
-  GPIO_InitStruct.Pin = SPI3_MISO_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(SPI3_MISO_GPIO_Port, &GPIO_InitStruct);
+	HAL_GPIO_DeInit(GPIOB, SPI3_SCK_Pin|SPI3_MISO_Pin|SPI3_MOSI_Pin);
 
-  GPIO_InitStruct.Pin = SPI3_SCK_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(SPI3_SCK_GPIO_Port, &GPIO_InitStruct);
+	GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+	GPIO_InitStruct.Pin = SPI3_MISO_Pin | SPI3_SCK_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+	GPIO_InitStruct.Pin = SPI3_MOSI_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
 }
 
 /* Get flash id example flash coms */
@@ -239,7 +281,7 @@ uint8_t flash_id(char *buf, int len){
 
 	release_flash();
 	free_flash();
-	flash_SPI_Enable();
+	//flash_SPI_Enable();
 
 	gpio_low(ICE40_SPI_CS);
 	flash.write(&uCommand,1);
@@ -262,7 +304,7 @@ uint8_t flash_id(char *buf, int len){
 	}
 	buf[l1 -1] = '\n';
 	buf[l1] = '\0';
-	flash_SPI_Disable();
+	//flash_SPI_Disable();
 
 	return len;
 }
@@ -303,13 +345,21 @@ static int8_t usbcdc_rxcallback(uint8_t *data, uint32_t *len){
 	USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &data[0]);
 
 	if(*len)
-		if(!Ice40.stream(data, *len)){
-			// HAL_UART_Transmit(&huart1, data, *len, HAL_UART_TIMEOUT_VALUE);
-			// mode_led_toggle();
+		if(mode){
+			if(!flash.stream(data,*len)) {
+				err = HAL_UART_Transmit_DMA(&huart1, data, *len);
+				return USBD_OK;
+			}
+			
+		} else {
+			if(!Ice40.stream(data, *len)){
+				// HAL_UART_Transmit(&huart1, data, *len, HAL_UART_TIMEOUT_VALUE);
+				// mode_led_toggle();
 
-			err = HAL_UART_Transmit_DMA(&huart1, data, *len);
-			return USBD_OK;
-			//if(temp) mode_led_low();
+				err = HAL_UART_Transmit_DMA(&huart1, data, *len);
+				return USBD_OK;
+				//if(temp) mode_led_low();
+			}
 		}
 
 	err = USBD_CDC_ReceivePacket(&hUsbDeviceFS);
@@ -326,7 +376,7 @@ static int8_t usbcdc_rxcallback(uint8_t *data, uint32_t *len){
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
   /* Prevent unused argument(s) compilation warning */
   UNUSED(huart);
-  mode_led_toggle();
+  //mode_led_toggle();
   err = USBD_CDC_ReceivePacket(&hUsbDeviceFS);
   errors += err ? 1 : 0;
 }
@@ -437,10 +487,11 @@ uint8_t Fpga::reset(uint8_t bit_src){
 			return TIMEOUT;
 	}
 	// certainly need this delay for STM as src, not sure about flash boot
-	timeout = 12800;
-	while(timeout--)
-		if(gpio_ishigh(ICE40_SPI_CS))
-			return TIMEOUT;
+	// timeout = 12800;
+	// while(timeout--)
+	// 	if(gpio_ishigh(ICE40_SPI_CS))
+	// 		return TIMEOUT;
+	HAL_Delay(2);
 
 	free_flash();
 	release_flash();
@@ -536,20 +587,152 @@ uint8_t Fpga::stream(uint8_t *data, uint32_t len){
 
 Flash::Flash(SPI_HandleTypeDef *hspi){
 	spi = hspi;
+	state = DETECT;
 }
 
 uint8_t Flash::write(uint8_t *p, uint32_t len){
-	return HAL_SPI_Transmit(spi,p, len, HAL_UART_TIMEOUT_VALUE);
+	return HAL_SPI_Transmit(spi, p, len, HAL_UART_TIMEOUT_VALUE);
 }
 
 uint8_t Flash::read(uint8_t *p, uint32_t len){
 	return HAL_SPI_Receive(spi, p, len, HAL_UART_TIMEOUT_VALUE);
 }
 
+uint8_t Flash::write(uint32_t addr, uint8_t *data, uint32_t len){
+	return HAL_SPI_Transmit(spi, data, len, HAL_UART_TIMEOUT_VALUE);
+}
+
+uint8_t Flash::write_page(uint32_t addr, uint8_t *data){
+	uint8_t pre[4] = {WPGE, addr >> 16, addr >> 8, addr};
+	HAL_SPI_Transmit(spi, pre, 4, HAL_UART_TIMEOUT_VALUE);
+	return HAL_SPI_Transmit(spi, data, 256, HAL_UART_TIMEOUT_VALUE);
+}
+
+uint8_t Flash::write_page(uint32_t addr, uint8_t *data, uint8_t len){
+	uint8_t pre[4] = {WPGE, addr >> 16, addr >> 8, addr};
+	HAL_SPI_Transmit(spi, pre, 4, HAL_UART_TIMEOUT_VALUE);
+	return HAL_SPI_Transmit(spi, data, len, HAL_UART_TIMEOUT_VALUE);
+}
+
 uint8_t Flash::write_read(uint8_t *tx, uint8_t *rx, uint32_t len){
 	return HAL_SPI_TransmitReceive(spi, tx, rx, len, HAL_UART_TIMEOUT_VALUE);
 }
 
+uint8_t Flash::erase(void){
+	uint8_t e = ERASEBLK;
+	return HAL_SPI_Transmit(spi, &e, 1, HAL_UART_TIMEOUT_VALUE);
+}
+
+uint8_t Flash::erase(uint32_t addr, uint16_t esize){
+	uint8_t pre[4] = {(esize == 32) ? ERASE32 : ERASE64, addr >> 16, addr >> 8, addr};
+	return HAL_SPI_Transmit(spi, pre, 4, HAL_UART_TIMEOUT_VALUE);
+}
+
+uint8_t Flash::erase_write(uint8_t *data, uint8_t len, uint16_t esize){
+	uint32_t tail = addr + len;
+	uint16_t wsize;
+	uint8_t timeout, rs, cmd = STATUS;
+	uint8_t pre[4] = {(esize == 32) ? ERASE32 : ERASE64, addr >> 16, addr >> 8, addr};
+	while(addr <= tail){
+		wsize = (tail - addr) > 255 ? 256 : tail - addr;
+		if((addr + wsize) <= block) {
+			gpio_low(ICE40_SPI_CS);
+			erase(addr, ERASE64);
+			gpio_high(ICE40_SPI_CS);
+			gpio_low(ICE40_SPI_CS);
+			write(&cmd,1);
+			do {
+				read(&rs,1);
+			} while (rs & 0x01);
+			rs = 0;
+			block += 0x10000;
+			
+			gpio_high(ICE40_SPI_CS);
+		}
+		gpio_low(ICE40_SPI_CS);
+		timeout = 10;
+		while (write_page(addr, data, wsize))
+			if(!timeout--)
+				return 0;
+
+		gpio_high(ICE40_SPI_CS);
+		
+		addr += wsize;
+		gpio_low(ICE40_SPI_CS);
+		write(&cmd,1);
+		do {
+			read(&rs,1);
+		} while (rs & 0x01);
+		rs = 0;
+		gpio_high(ICE40_SPI_CS);	
+	}
+}
+
+uint8_t Flash::status(uint8_t timeout){
+	uint8_t rs,s= STATUS;
+	if(!HAL_SPI_Transmit(spi, &s, 1, HAL_UART_TIMEOUT_VALUE))
+		do {
+			rs = HAL_SPI_Receive(spi, &rs, 1, HAL_UART_TIMEOUT_VALUE);
+
+		} while(timeout-- && rs & 0x01);
+	return rs;
+}
+
+uint8_t Flash::stream(uint8_t *data, uint32_t len){
+	uint32_t *word;
+	uint8_t *img;
+	uint8_t cmd = WAKEUP;
+
+	switch(state) {
+		case DETECT: // Lets look for the Ice40 image or just pass bytes to Uart
+			img = data + 4;
+			word = (uint32_t *) img;
+			if(*word == sig.word){ // We are inside the 1st 4 bytes Ice40 image
+				nbytes = 0;
+				status_led_high();
+				//flash_SPI_Disable();
+				if (err = Ice40.reset(MCNTRL)) ;
+					//flash_SPI_Enable(); 
+				else { // Write bytes (assumes *len < NBYTES)
+					nbytes += len - 4;
+					addr = 0;
+					block = 0;
+					
+					gpio_low(ICE40_SPI_CS);
+					write(&cmd, 1);
+					gpio_high(ICE40_SPI_CS);
+					
+					cmd = WEN;
+					gpio_low(ICE40_SPI_CS);
+					write(&cmd, 1);
+					gpio_high(ICE40_SPI_CS);
+
+					if(erase_write(img, nbytes, ERASE64))
+						err = 1;
+				}
+				state = PROG; // could return bytes writter here addr - 0 to indicate from comman caller how well we did, it could then get us to try again maybe?
+			} else
+				return 0;
+			break;
+		case PROG: // We are now in the Ice40 image
+			nbytes += len;
+			erase_write(img, nbytes, ERASE64);
+			break;
+	}
+
+	if(nbytes >= NBYTES) { // we cannot rely on NBYTES for flash prog...
+		if(err = Ice40.config())
+			status_led_high();
+		else
+			status_led_low();
+		//flash_SPI_Enable();
+		state = DETECT;
+	}
+
+	errors += err ? 1 : 0;
+
+	return len;
+}
 
 #ifdef __cplusplus
 }
