@@ -581,7 +581,7 @@ uint8_t Fpga::stream(uint8_t *data, uint32_t len){
 
 	errors += err ? 1 : 0;
 
-	return len;
+	return 1;
 }
 
 
@@ -634,7 +634,7 @@ uint8_t Flash::erase_write(uint8_t *data, uint8_t len, uint16_t esize){
 	uint16_t wsize;
 	uint8_t wen = WEN;
 	uint8_t rs, sts = STATUS;
-	uint8_t pre[4] = {(esize == 32) ? ERASE32 : ERASE64, addr >> 16, addr >> 8, addr};
+	// uint8_t pre[4] = {(esize == 32) ? ERASE32 : ERASE64, addr >> 16, addr >> 8, addr};
 
 	page = data;
 
@@ -714,6 +714,7 @@ uint8_t Flash::status(uint8_t timeout){
 uint8_t Flash::stream(uint8_t *data, uint32_t len){
 	uint32_t *word;
 	uint8_t *img;
+
 	uint8_t cmd = WAKEUP;
 
 	switch(state) {
@@ -752,7 +753,9 @@ uint8_t Flash::stream(uint8_t *data, uint32_t len){
 			break;
 	}
 
-	if(nbytes >= NBYTES) { // we cannot rely on NBYTES for flash prog...
+
+
+	if(nbytes >= NBYTES) { // we cannot rely on NBYTES for general flash prog...
 		// if(err = Ice40.reset(FLASH1))
 		// 	status_led_high();
 		// else 
@@ -764,7 +767,7 @@ uint8_t Flash::stream(uint8_t *data, uint32_t len){
 
 	errors += err ? 1 : 0;
 
-	return len;
+	return 1;
 }
 
 #ifdef __cplusplus
