@@ -651,17 +651,16 @@ uint8_t Flash::erase_write(uint8_t *data, uint8_t len, uint16_t esize){
 			erase(ERASE64);
 			gpio_high(ICE40_SPI_CS);
 
-			HAL_Delay(2200);
+			HAL_Delay(500); // 2200
 			
-			// gpio_low(ICE40_SPI_CS);
-			// write(&sts,1);
-			// do {
-			// 	read(&rs,1);
-			// } while (rs & 0x01);//WEL bit?
-			// gpio_high(ICE40_SPI_CS);
+			gpio_low(ICE40_SPI_CS);
+			write(&sts,1);
+			do {
+				read(&rs,1);
+			} while (rs & 0x01);//WEL bit?
+			gpio_high(ICE40_SPI_CS);
 
 			mode_led_toggle();
-			rs = 0;
 			block += 0x10000;
 			
 			
@@ -690,13 +689,13 @@ uint8_t Flash::erase_write(uint8_t *data, uint8_t len, uint16_t esize){
 
 		HAL_Delay(2);
 
-		// gpio_low(ICE40_SPI_CS);
-		// write(&sts,1);
-		// do {
-		// 	read(&rs,1);
-		// } while (rs & 0x01);
-		// rs = 0;
-		// gpio_high(ICE40_SPI_CS);	
+		gpio_low(ICE40_SPI_CS);
+		write(&sts,1);
+		do {
+			read(&rs,1);
+		} while (rs & 0x01);
+		rs = 0;
+		gpio_high(ICE40_SPI_CS);	
 	}
 	return 0;
 }
@@ -724,24 +723,21 @@ uint8_t Flash::stream(uint8_t *data, uint32_t len){
 			if(*word == sig.word){ // We are inside the 1st 4 bytes Ice40 image
 				nbytes = 0;
 				status_led_high();
-				//flash_SPI_Disable();
-				if (err = Ice40.reset(MCNTRL)) ;
-					//flash_SPI_Enable(); 
-				else { // Write bytes (assumes *len < NBYTES)
-					nbytes += len - 4;
-					addr = 0;
-					block = 0;
+				 // Write bytes (assumes *len < NBYTES)
+				nbytes += len - 4;
+				addr = 0;
+				block = 0;
 
-					release_flash();
-					free_flash();
-					
-					gpio_low(ICE40_SPI_CS);
-					write(&cmd, 1);
-					gpio_high(ICE40_SPI_CS);
+				release_flash();
+				free_flash();
+				
+				gpio_low(ICE40_SPI_CS);
+				write(&cmd, 1);
+				gpio_high(ICE40_SPI_CS);
 
-					if(erase_write(img, nbytes, ERASE64))
-						err = 1;
-				}
+				if(erase_write(img, nbytes, ERASE64))
+					err = 1;
+				
 				state = PROG; // could return bytes writter here addr - 0 to indicate from comman caller how well we did, it could then get us to try again maybe?
 			} else
 				return 0;
