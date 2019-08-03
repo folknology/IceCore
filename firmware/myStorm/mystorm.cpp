@@ -63,6 +63,7 @@ uint8_t  rxb[RX];
 
 /* functions */
 static void cdc_puts(char *s);
+void flash_Boot_Enable(void);
 void flash_SPI_Enable(void);
 void flash_SPI_Disable(void);
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
@@ -97,6 +98,8 @@ class Flash {
 	uint32_t addr;
 	uint32_t block;
 	uint8_t state;
+	uint8_t pagebuf[256];
+	uint32_t hd;
 	uint32_t nbytes;
 	union SIG sig =  {0x7E, 0xAA, 0x99, 0x7E} ;
 
@@ -121,7 +124,7 @@ class Flash {
 	uint8_t write_page(uint8_t *data);
 	uint8_t write_byte(uint8_t *data);
 	uint8_t write_read(uint8_t *tx, uint8_t *rx, uint32_t len);
-	uint8_t erase_write(uint8_t *data, uint8_t len, uint16_t esize);
+	uint8_t erase_write(uint8_t *data, uint32_t len, uint16_t esize);
 	uint8_t stream(uint8_t *data, uint32_t len);
 };
 
@@ -140,7 +143,7 @@ setup(void)
 	mode_led_high();
 
 	// Initiate Ice40 boot from flash
-	flash_SPI_Enable();
+	flash_Boot_Enable();
 	Ice40.reset(FLASH1);
 	HAL_Delay(1000);
 	if(!gpio_ishigh(ICE40_CDONE)){
@@ -149,7 +152,7 @@ setup(void)
 	} else {
 		status_led_low();
 	}
-	//flash_SPI_Disable();
+	flash_SPI_Enable();
 
 	cdc_puts(VER);
 	cdc_puts("\n");
@@ -228,6 +231,12 @@ static void cdc_puts(char *s){
 		cdc_puts("\r");
 }
 
+void flash_Boot_Enable(void){
+
+	__HAL_RCC_SPI3_CLK_DISABLE();
+
+	HAL_GPIO_DeInit(GPIOB, SPI3_SCK_Pin|SPI3_MISO_Pin|SPI3_MOSI_Pin);
+}
 
 void flash_SPI_Enable(void){
 
@@ -628,20 +637,19 @@ uint8_t Flash::erase(uint16_t esize){
 	return HAL_SPI_Transmit(spi, pre, 4, HAL_UART_TIMEOUT_VALUE);
 }
 
-uint8_t Flash::erase_write(uint8_t *data, uint8_t len, uint16_t esize){
-	uint32_t tail = addr + len;
+uint8_t Flash::erase_write(uint8_t *data, uint32_t len, uint16_t esize){
+	uint32_t end = addr + len;
 	uint8_t *page;
 	uint16_t wsize;
 	uint8_t wen = WEN;
 	uint8_t rs, sts = STATUS;
-	// uint8_t pre[4] = {(esize == 32) ? ERASE32 : ERASE64, addr >> 16, addr >> 8, addr};
 
 	page = data;
 
-	while(addr < tail){
-		wsize = (tail - addr) > 255 ? 256 : tail - addr;
+	while(addr < end){
+		wsize = (end - addr) > 255 ? 256 : end - addr;
 
-		if((addr + wsize) >= block) { // too many times!
+		if((addr + wsize) >= block) { 
 
 			gpio_low(ICE40_SPI_CS);
 			write(&wen,1);
@@ -660,42 +668,55 @@ uint8_t Flash::erase_write(uint8_t *data, uint8_t len, uint16_t esize){
 			} while (rs & 0x01);//WEL bit?
 			gpio_high(ICE40_SPI_CS);
 
-			mode_led_toggle();
 			block += 0x10000;
-			
-			
+			mode_led_toggle();
 		}
-		gpio_low(ICE40_SPI_CS);
-		write(&wen,1);
-		gpio_high(ICE40_SPI_CS);
 
-		if(wsize == 256){
+
+		if(wsize == 256){ // Page write
+
+			gpio_low(ICE40_SPI_CS);
+			write(&wen,1);
+			gpio_high(ICE40_SPI_CS);
+
 			gpio_low(ICE40_SPI_CS);
 			write_page(page);
 			gpio_high(ICE40_SPI_CS);
+
+			HAL_Delay(2);
+
+			gpio_low(ICE40_SPI_CS);
+			write(&sts,1);
+			do {
+				read(&rs,1);
+			} while (rs & 0x01);
+			gpio_high(ICE40_SPI_CS);
+
 			addr += wsize;
 			page += wsize;
-		} else { // remainder less than page size
+
+		} else { // remainder less than page size, byte writes
 			for(uint8_t i = 0; i < wsize; i++){
+
+				gpio_low(ICE40_SPI_CS);
+				write(&wen,1);
+				gpio_high(ICE40_SPI_CS);
+
 				gpio_low(ICE40_SPI_CS);
 				write_byte(page++);
 				gpio_high(ICE40_SPI_CS);
+
+				gpio_low(ICE40_SPI_CS);
+				write(&sts,1);
+				do {
+					read(&rs,1);
+				} while (rs & 0x01);
+				gpio_high(ICE40_SPI_CS);
+
 				addr++;
 			}
 		}
-		
-		
-		
-
-		HAL_Delay(2);
-
-		gpio_low(ICE40_SPI_CS);
-		write(&sts,1);
-		do {
-			read(&rs,1);
-		} while (rs & 0x01);
-		rs = 0;
-		gpio_high(ICE40_SPI_CS);	
+	
 	}
 	return 0;
 }
@@ -713,8 +734,8 @@ uint8_t Flash::status(uint8_t timeout){
 uint8_t Flash::stream(uint8_t *data, uint32_t len){
 	uint32_t *word;
 	uint8_t *img;
-
 	uint8_t cmd = WAKEUP;
+	uint32_t end = nbytes + len;
 
 	switch(state) {
 		case DETECT: // Lets look for the Ice40 image or just pass bytes to Uart
@@ -724,7 +745,7 @@ uint8_t Flash::stream(uint8_t *data, uint32_t len){
 				nbytes = 0;
 				status_led_high();
 				 // Write bytes (assumes *len < NBYTES)
-				nbytes += len - 4;
+				nbytes += len- 4;
 				addr = 0;
 				block = 0;
 
@@ -735,28 +756,49 @@ uint8_t Flash::stream(uint8_t *data, uint32_t len){
 				write(&cmd, 1);
 				gpio_high(ICE40_SPI_CS);
 
-				if(erase_write(img, nbytes, ERASE64))
-					err = 1;
-				
+				// Buffer prog data packet, assumes packet < 256
+				for(hd = 0; hd < nbytes; hd++)
+					pagebuf[hd] = *img++;
+
 				state = PROG; // could return bytes writter here addr - 0 to indicate from comman caller how well we did, it could then get us to try again maybe?
 			} else
 				return 0;
 			break;
 		case PROG: // We are now in the Ice40 image
-			nbytes += len;
-			if(erase_write(data, len, ERASE64))
+			img = data;
+			
+			while (++nbytes < end){
+				pagebuf[hd++] = *img++;
+				if( (nbytes >= NBYTES) || (hd == 256) ) { // Lets write flash page/remainder
+					if(erase_write(pagebuf, hd, ERASE64)) // We don't need to pass pagebuf or hd!
 						err = 1;
+					hd = 0;
+					if(nbytes >= NBYTES) 
+						break;
+				} 
+			}
 			break;
 	}
 
 
 
 	if(nbytes >= NBYTES) { // we cannot rely on NBYTES for general flash prog...
-		// if(err = Ice40.reset(FLASH1))
-		// 	status_led_high();
-		// else 
+		flash_Boot_Enable();
+		if(err = Ice40.reset(FLASH1))
+			status_led_high();
+		else 
 			status_led_low();
-		//flash_SPI_Enable();
+
+		HAL_Delay(1000);
+
+		if(!gpio_ishigh(ICE40_CDONE)){
+			err = ICE_ERROR;
+			status_led_high();
+			//cdc_puts("Flash Boot Error\n");
+		} else {
+			status_led_low();
+		}
+		flash_SPI_Enable();
 		state = DETECT;
 		mode_led_low();
 	}
