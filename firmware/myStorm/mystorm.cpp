@@ -95,7 +95,7 @@ class Fpga {
 class Flash {
 	uint32_t NBYTES;
 	uint32_t addr;
-	uint8_t block;
+	uint32_t block;
 	uint8_t state;
 	uint32_t nbytes;
 	union SIG sig =  {0x7E, 0xAA, 0x99, 0x7E} ;
@@ -111,15 +111,15 @@ class Flash {
 	static const uint8_t ERASEBLK = 0xC7;
 
 	public:
-	Flash(SPI_HandleTypeDef *hspi);
+	Flash(SPI_HandleTypeDef *hspi, uint32_t img_size);
 	uint8_t erase(void);
-	uint8_t erase(uint32_t addr, uint16_t size);
+	uint8_t erase(uint16_t size);
 	uint8_t status(uint8_t timeout);
 	uint8_t write(uint8_t *p, uint32_t len); // make an SPI class for this
 	uint8_t read(uint8_t *p, uint32_t len); // make an SPI class for this
-	uint8_t write(uint32_t addr, uint8_t *data, uint32_t len); // make an SPI class for this
-	uint8_t write_page(uint32_t addr, uint8_t *data);
-	uint8_t write_page(uint32_t addr, uint8_t *data, uint8_t len);
+	// uint8_t write(uint8_t *addr, uint8_t *data, uint32_t len); // make an SPI class for this
+	uint8_t write_page(uint8_t *data);
+	uint8_t write_byte(uint8_t *data);
 	uint8_t write_read(uint8_t *tx, uint8_t *rx, uint32_t len);
 	uint8_t erase_write(uint8_t *data, uint8_t len, uint16_t esize);
 	uint8_t stream(uint8_t *data, uint32_t len);
@@ -128,7 +128,7 @@ class Flash {
 
 /* global objects */
 Fpga Ice40(IMGSIZE);
-Flash flash(&hspi3);
+Flash flash(&hspi3, IMGSIZE);
 
 /*
  * Setup function (called once at powerup)
@@ -275,7 +275,7 @@ void flash_SPI_Disable(void){
 uint8_t flash_id(char *buf, int len){
 	int r, i;
 	int l1 = len - 1;
-	Flash flash(&hspi3);
+	Flash flash(&hspi3, IMGSIZE);
 	uint8_t uCommand = 0xAB;
 	uint8_t response[3] = {0,0,0};
 
@@ -585,7 +585,8 @@ uint8_t Fpga::stream(uint8_t *data, uint32_t len){
 }
 
 
-Flash::Flash(SPI_HandleTypeDef *hspi){
+Flash::Flash(SPI_HandleTypeDef *hspi, uint32_t img_size){
+	NBYTES = img_size;
 	spi = hspi;
 	state = DETECT;
 }
@@ -598,20 +599,19 @@ uint8_t Flash::read(uint8_t *p, uint32_t len){
 	return HAL_SPI_Receive(spi, p, len, HAL_UART_TIMEOUT_VALUE);
 }
 
-uint8_t Flash::write(uint32_t addr, uint8_t *data, uint32_t len){
-	return HAL_SPI_Transmit(spi, data, len, HAL_UART_TIMEOUT_VALUE);
-}
+// uint8_t Flash::write(uint8_t *addr, uint8_t *data, uint32_t len){
+// 	return HAL_SPI_Transmit(spi, data, len, HAL_UART_TIMEOUT_VALUE);
+// }
 
-uint8_t Flash::write_page(uint32_t addr, uint8_t *data){
+uint8_t Flash::write_page(uint8_t *data){
 	uint8_t pre[4] = {WPGE, addr >> 16, addr >> 8, addr};
 	HAL_SPI_Transmit(spi, pre, 4, HAL_UART_TIMEOUT_VALUE);
 	return HAL_SPI_Transmit(spi, data, 256, HAL_UART_TIMEOUT_VALUE);
 }
 
-uint8_t Flash::write_page(uint32_t addr, uint8_t *data, uint8_t len){
-	uint8_t pre[4] = {WPGE, addr >> 16, addr >> 8, addr};
-	HAL_SPI_Transmit(spi, pre, 4, HAL_UART_TIMEOUT_VALUE);
-	return HAL_SPI_Transmit(spi, data, len, HAL_UART_TIMEOUT_VALUE);
+uint8_t Flash::write_byte(uint8_t *data){
+	uint8_t pre[5] = {WPGE, addr >> 16, addr >> 8, addr, *data};
+	return HAL_SPI_Transmit(spi, pre, 5, HAL_UART_TIMEOUT_VALUE);
 }
 
 uint8_t Flash::write_read(uint8_t *tx, uint8_t *rx, uint32_t len){
@@ -623,49 +623,82 @@ uint8_t Flash::erase(void){
 	return HAL_SPI_Transmit(spi, &e, 1, HAL_UART_TIMEOUT_VALUE);
 }
 
-uint8_t Flash::erase(uint32_t addr, uint16_t esize){
-	uint8_t pre[4] = {(esize == 32) ? ERASE32 : ERASE64, addr >> 16, addr >> 8, addr};
+uint8_t Flash::erase(uint16_t esize){
+	uint8_t pre[4] = {(esize == 32) ? ERASE32 : ERASE64, block >> 16, block >> 8, block};
 	return HAL_SPI_Transmit(spi, pre, 4, HAL_UART_TIMEOUT_VALUE);
 }
 
 uint8_t Flash::erase_write(uint8_t *data, uint8_t len, uint16_t esize){
 	uint32_t tail = addr + len;
+	uint8_t *page;
 	uint16_t wsize;
-	uint8_t timeout, rs, cmd = STATUS;
+	uint8_t wen = WEN;
+	uint8_t rs, sts = STATUS;
 	uint8_t pre[4] = {(esize == 32) ? ERASE32 : ERASE64, addr >> 16, addr >> 8, addr};
-	while(addr <= tail){
+
+	page = data;
+
+	while(addr < tail){
 		wsize = (tail - addr) > 255 ? 256 : tail - addr;
-		if((addr + wsize) <= block) {
+
+		if((addr + wsize) >= block) { // too many times!
+
 			gpio_low(ICE40_SPI_CS);
-			erase(addr, ERASE64);
+			write(&wen,1);
 			gpio_high(ICE40_SPI_CS);
+
 			gpio_low(ICE40_SPI_CS);
-			write(&cmd,1);
-			do {
-				read(&rs,1);
-			} while (rs & 0x01);
+			erase(ERASE64);
+			gpio_high(ICE40_SPI_CS);
+
+			HAL_Delay(2200);
+			
+			// gpio_low(ICE40_SPI_CS);
+			// write(&sts,1);
+			// do {
+			// 	read(&rs,1);
+			// } while (rs & 0x01);//WEL bit?
+			// gpio_high(ICE40_SPI_CS);
+
+			mode_led_toggle();
 			rs = 0;
 			block += 0x10000;
 			
-			gpio_high(ICE40_SPI_CS);
+			
 		}
 		gpio_low(ICE40_SPI_CS);
-		timeout = 10;
-		while (write_page(addr, data, wsize))
-			if(!timeout--)
-				return 0;
-
+		write(&wen,1);
 		gpio_high(ICE40_SPI_CS);
+
+		if(wsize == 256){
+			gpio_low(ICE40_SPI_CS);
+			write_page(page);
+			gpio_high(ICE40_SPI_CS);
+			addr += wsize;
+			page += wsize;
+		} else { // remainder less than page size
+			for(uint8_t i = 0; i < wsize; i++){
+				gpio_low(ICE40_SPI_CS);
+				write_byte(page++);
+				gpio_high(ICE40_SPI_CS);
+				addr++;
+			}
+		}
 		
-		addr += wsize;
-		gpio_low(ICE40_SPI_CS);
-		write(&cmd,1);
-		do {
-			read(&rs,1);
-		} while (rs & 0x01);
-		rs = 0;
-		gpio_high(ICE40_SPI_CS);	
+		
+		
+
+		HAL_Delay(2);
+
+		// gpio_low(ICE40_SPI_CS);
+		// write(&sts,1);
+		// do {
+		// 	read(&rs,1);
+		// } while (rs & 0x01);
+		// rs = 0;
+		// gpio_high(ICE40_SPI_CS);	
 	}
+	return 0;
 }
 
 uint8_t Flash::status(uint8_t timeout){
@@ -697,12 +730,10 @@ uint8_t Flash::stream(uint8_t *data, uint32_t len){
 					nbytes += len - 4;
 					addr = 0;
 					block = 0;
+
+					release_flash();
+					free_flash();
 					
-					gpio_low(ICE40_SPI_CS);
-					write(&cmd, 1);
-					gpio_high(ICE40_SPI_CS);
-					
-					cmd = WEN;
 					gpio_low(ICE40_SPI_CS);
 					write(&cmd, 1);
 					gpio_high(ICE40_SPI_CS);
@@ -716,17 +747,19 @@ uint8_t Flash::stream(uint8_t *data, uint32_t len){
 			break;
 		case PROG: // We are now in the Ice40 image
 			nbytes += len;
-			erase_write(img, nbytes, ERASE64);
+			if(erase_write(img, nbytes, ERASE64))
+						err = 1;
 			break;
 	}
 
 	if(nbytes >= NBYTES) { // we cannot rely on NBYTES for flash prog...
-		if(err = Ice40.config())
-			status_led_high();
-		else
+		// if(err = Ice40.reset(FLASH1))
+		// 	status_led_high();
+		// else 
 			status_led_low();
 		//flash_SPI_Enable();
 		state = DETECT;
+		mode_led_low();
 	}
 
 	errors += err ? 1 : 0;
