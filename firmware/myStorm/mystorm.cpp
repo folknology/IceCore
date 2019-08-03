@@ -748,7 +748,7 @@ uint8_t Flash::stream(uint8_t *data, uint32_t len){
 			break;
 		case PROG: // We are now in the Ice40 image
 			nbytes += len;
-			if(erase_write(img, nbytes, ERASE64))
+			if(erase_write(data, len, ERASE64))
 						err = 1;
 			break;
 	}
