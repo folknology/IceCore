@@ -669,7 +669,7 @@ uint8_t Flash::erase_write(uint16_t esize){
 			gpio_high(ICE40_SPI_CS);
 
 			block += 0x10000;
-			mode_led_toggle();
+			//mode_led_toggle();
 		}
 
 
@@ -767,7 +767,8 @@ uint8_t Flash::stream(uint8_t *data, uint32_t len){
 		case PROG: // We are now in the Ice40 image
 			img = data;
 			
-			while (nbytes < end){
+			while (nbytes < end ){
+				nbytes++;
 				pagebuf[hd++] = *img++;
 				if( (nbytes >= NBYTES) || (hd == 256) ) { // Lets write flash page/remainder
 					if(erase_write(ERASE64)) 
@@ -776,7 +777,6 @@ uint8_t Flash::stream(uint8_t *data, uint32_t len){
 					if(nbytes >= NBYTES) 
 						break;
 				} 
-				nbytes++;
 			}
 			break;
 	}
