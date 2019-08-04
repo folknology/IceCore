@@ -124,7 +124,7 @@ class Flash {
 	uint8_t write_page(uint8_t *data);
 	uint8_t write_byte(uint8_t *data);
 	uint8_t write_read(uint8_t *tx, uint8_t *rx, uint32_t len);
-	uint8_t erase_write(uint8_t *data, uint32_t len, uint16_t esize);
+	uint8_t erase_write(uint16_t esize);
 	uint8_t stream(uint8_t *data, uint32_t len);
 };
 
@@ -637,14 +637,14 @@ uint8_t Flash::erase(uint16_t esize){
 	return HAL_SPI_Transmit(spi, pre, 4, HAL_UART_TIMEOUT_VALUE);
 }
 
-uint8_t Flash::erase_write(uint8_t *data, uint32_t len, uint16_t esize){
-	uint32_t end = addr + len;
+uint8_t Flash::erase_write(uint16_t esize){
+	uint32_t end = addr + hd;
 	uint8_t *page;
 	uint16_t wsize;
 	uint8_t wen = WEN;
 	uint8_t rs, sts = STATUS;
 
-	page = data;
+	page = pagebuf;
 
 	while(addr < end){
 		wsize = (end - addr) > 255 ? 256 : end - addr;
@@ -767,15 +767,16 @@ uint8_t Flash::stream(uint8_t *data, uint32_t len){
 		case PROG: // We are now in the Ice40 image
 			img = data;
 			
-			while (++nbytes < end){
+			while (nbytes < end){
 				pagebuf[hd++] = *img++;
 				if( (nbytes >= NBYTES) || (hd == 256) ) { // Lets write flash page/remainder
-					if(erase_write(pagebuf, hd, ERASE64)) // We don't need to pass pagebuf or hd!
+					if(erase_write(ERASE64)) 
 						err = 1;
 					hd = 0;
 					if(nbytes >= NBYTES) 
 						break;
 				} 
+				nbytes++;
 			}
 			break;
 	}
