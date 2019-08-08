@@ -78,6 +78,18 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
 
 /* Classses */
+class BIUI {
+	uint8_t status;
+	uint8_t mode;
+
+	public:
+		BIUI(uint8_t status, uint8_t mode);
+		void modulate_status(void);
+		uint8_t set_status(uint8_t state);
+		uint8_t set_mode(uint8_t state);
+};
+
+
 class Fpga {
 	uint32_t NBYTES;
 	uint8_t state;
@@ -130,6 +142,7 @@ class Flash {
 
 
 /* global objects */
+BIUI Bui(1,1);
 Fpga Ice40(IMGSIZE);
 Flash flash(&hspi3, IMGSIZE);
 
@@ -150,7 +163,7 @@ setup(void)
 		err = ICE_ERROR;
 		cdc_puts("Flash Boot Error\n");
 	} else {
-		status_led_low();
+		Bui.set_status(0);
 	}
 	flash_SPI_Enable();
 
@@ -443,7 +456,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	uint32_t bs, bp;
 
-	//mode_led_toggle();
+	Bui.modulate_status();
 
 	if(rxo != rxi){
 		bs = (rxo > rxi) ? RX - rxo : rxi - rxo;
@@ -451,6 +464,26 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 		if(CDC_Transmit_FS(&rxb[bp], bs) == 0U)
 			rxo = (rxo == RX) ? 0 : rxo + bs;
 	}
+}
+
+BIUI::BIUI(uint8_t status, uint8_t mode){
+	status = status;
+	mode = mode;
+}
+void BIUI::modulate_status(void){
+	if(status)
+		HAL_GPIO_TogglePin(GPIOB, STATUS_LED_Pin);
+}
+
+uint8_t BIUI::set_status(uint8_t state){
+	status = state;
+	HAL_GPIO_WritePin(GPIOB, STATUS_LED_Pin, (GPIO_PinState)status);
+	return status;
+}
+uint8_t BIUI::set_mode(uint8_t state){
+	mode = state;
+	HAL_GPIO_WritePin(GPIOB, STATUS_LED_Pin, (GPIO_PinState)mode);
+	return mode;
 }
 
 
@@ -561,7 +594,7 @@ uint8_t Fpga::stream(uint8_t *data, uint32_t len){
 			word = (uint32_t *) img;
 			if(*word == sig.word){ // We are inside the 1st 4 bytes Ice40 image
 				nbytes = 0;
-				status_led_high();
+				Bui.set_status(1);
 				flash_SPI_Disable();
 				if (err = reset(MCNTRL)) 
 					flash_SPI_Enable(); 
@@ -581,9 +614,9 @@ uint8_t Fpga::stream(uint8_t *data, uint32_t len){
 
 	if(nbytes >= NBYTES) {
 		if(err = config())
-			status_led_high();
+			Bui.set_status(1);
 		else
-			status_led_low();
+			Bui.set_status(0);
 		flash_SPI_Enable();
 		state = DETECT;
 	}
@@ -743,7 +776,7 @@ uint8_t Flash::stream(uint8_t *data, uint32_t len){
 			word = (uint32_t *) img;
 			if(*word == sig.word){ // We are inside the 1st 4 bytes Ice40 image
 				nbytes = 0;
-				status_led_high();
+				Bui.set_status(1);
 				 // Write bytes (assumes *len < NBYTES)
 				nbytes += len- 4;
 				addr = 0;
@@ -786,18 +819,18 @@ uint8_t Flash::stream(uint8_t *data, uint32_t len){
 	if(nbytes >= NBYTES) { // we cannot rely on NBYTES for general flash prog...
 		flash_Boot_Enable();
 		if(err = Ice40.reset(FLASH1))
-			status_led_high();
+			Bui.set_status(1);
 		else 
-			status_led_low();
+			Bui.set_status(0);
 
 		HAL_Delay(1000);
 
 		if(!gpio_ishigh(ICE40_CDONE)){
 			err = ICE_ERROR;
-			status_led_high();
+			Bui.set_status(1);
 			//cdc_puts("Flash Boot Error\n");
 		} else {
-			status_led_low();
+			Bui.set_status(0);
 		}
 		flash_SPI_Enable();
 		state = DETECT;
