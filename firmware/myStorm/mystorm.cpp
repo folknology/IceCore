@@ -46,14 +46,6 @@ extern USBD_HandleTypeDef hUsbDeviceFS;
 extern UART_HandleTypeDef huart1;
 extern TIM_HandleTypeDef htim6;
 
-// #define DMA_BYTES 2048
-// #define DMAH (DMA_BYTES / 2)
-// uint8_t rxdmabuf[DMA_BYTES];
-// uint8_t urxdmabuf[64];
-// uint8_t urxlen = 0;
-// uint8_t dmai = 0;
-// int dmao = DMAH - 1;
-
 static int mode = 0;
 static int err = 0;
 uint8_t errors = 0;
@@ -84,6 +76,7 @@ class BIUI {
 
 	public:
 		BIUI(uint8_t status, uint8_t mode);
+		uint8_t mode_toggle(void);
 		void modulate_status(void);
 		uint8_t set_status(uint8_t state);
 		uint8_t set_mode(uint8_t state);
@@ -153,7 +146,7 @@ void
 setup(void)
 {
 
-	mode_led_high();
+	Bui.set_mode(1);
 
 	// Initiate Ice40 boot from flash
 	flash_Boot_Enable();
@@ -174,11 +167,7 @@ setup(void)
 	USBD_Interface_fops_FS.Receive = &usbcdc_rxcallback;
 	HAL_TIM_Base_Start_IT(&htim6);
 
-	// if(err = HAL_UART_Receive_DMA(&huart1, (uint8_t *)rxdmabuf, DMA_BYTES))
-	// 	mode_led_low();
-
-	if(err = HAL_UART_Receive_IT(&huart1, (uint8_t *)(rxb + rxi), 1));
-		//mode_led_low();
+	err = HAL_UART_Receive_IT(&huart1, (uint8_t *)(rxb + rxi), 1);
 
 
 	err = USBD_CDC_ReceivePacket(&hUsbDeviceFS);
@@ -194,7 +183,7 @@ setup(void)
 void
 loop(void)
 {
-	char buffer[16];
+	//char buffer[16];
 	// uint8_t b = 0;
 
 	// if (err) {
@@ -211,22 +200,8 @@ loop(void)
 	// 	err = 0;
 	// }
 
-	//cdc_puts("Waiting for USB serial\n");
-
 	if(gpio_ishigh(MODE_BOOT)) {
-		mode_led_toggle();
-		mode = mode ? 0 : 1;
-		
-		// if(err) {
-		// 	error_report(buffer, 16);
-		// 	cdc_puts(buffer);
-		// 	err = 0;
-		// } else {
-			// Eventually flash writing will go here, for now just report flash id
-			// if(flash_id(buffer, 16))
-			// 	cdc_puts(buffer);
-		// }
-
+		mode = Bui.mode_toggle();
 		HAL_Delay(1000);
 	}
 }
@@ -348,7 +323,7 @@ uint8_t error_report(char *buf, int len){
 	return 6;
 }
 
-/**
+/** TODO remove this
   * @brief  EXTI line detection callbacks.
   * @param  GPIO_Pin Specifies the pins connected EXTI line
   * @retval None
@@ -356,7 +331,6 @@ uint8_t error_report(char *buf, int len){
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
   /* Prevent unused argument(s) compilation warning */
   UNUSED(GPIO_Pin);
-  //HAL_GPIO_TogglePin(MODE_LED_GPIO_Port, MODE_LED_Pin);
 }
 
 /*
@@ -375,12 +349,8 @@ static int8_t usbcdc_rxcallback(uint8_t *data, uint32_t *len){
 			
 		} else {
 			if(!Ice40.stream(data, *len)){
-				// HAL_UART_Transmit(&huart1, data, *len, HAL_UART_TIMEOUT_VALUE);
-				// mode_led_toggle();
-
 				err = HAL_UART_Transmit_DMA(&huart1, data, *len);
 				return USBD_OK;
-				//if(temp) mode_led_low();
 			}
 		}
 
@@ -398,7 +368,6 @@ static int8_t usbcdc_rxcallback(uint8_t *data, uint32_t *len){
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
   /* Prevent unused argument(s) compilation warning */
   UNUSED(huart);
-  //mode_led_toggle();
   err = USBD_CDC_ReceivePacket(&hUsbDeviceFS);
   errors += err ? 1 : 0;
 }
@@ -414,31 +383,7 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart){
   UNUSED(huart);
 	err = huart->ErrorCode;
 	errors += err ? 1 : 0;
-	// cdc_puts("Uart error ");
-	// cdc_puts('0' + huart->ErrorCode);
-	// cdc_puts("\n");
 }
-
-// void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-// {	
-//   /* Prevent unused argument(s) compilation warning */
-//   UNUSED(huart);
-//   CDC_Transmit_FS((unsigned char *)rxdmabuf, DMA_BYTES);
-//   if(err = HAL_UART_Receive_DMA(&huart1, (uint8_t *)rxdmabuf, DMA_BYTES))
-// 		mode_led_low();
-// }
-
-// void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-// {	
-//   /* Prevent unused argument(s) compilation warning */
-//   UNUSED(huart);
-//   int dmas = HAL_UART_Receive_DMA(&huart1, (uint8_t *)&rxdmabuf[dmai], DMAH);
-//   CDC_Transmit_FS((unsigned char *)&rxdmabuf[dmao], DMAH);
-//   if(dmas == HAL_OK) {
-// 	  dmao = dmai;
-// 	  dmai = dmai ? 0 : DMAH -1;
-// }
-
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){	
   /* Prevent unused argument(s) compilation warning */
@@ -470,6 +415,13 @@ BIUI::BIUI(uint8_t status, uint8_t mode){
 	status = status;
 	mode = mode;
 }
+
+uint8_t BIUI::mode_toggle(void){
+	mode = mode ? 0 :1;
+	HAL_GPIO_WritePin(GPIOB, STATUS_LED_Pin, (GPIO_PinState)mode);
+	return mode;
+}
+
 void BIUI::modulate_status(void){
 	if(status)
 		HAL_GPIO_TogglePin(GPIOB, STATUS_LED_Pin);
@@ -528,11 +480,6 @@ uint8_t Fpga::reset(uint8_t bit_src){
 		if (--timeout == 0)
 			return TIMEOUT;
 	}
-	// certainly need this delay for STM as src, not sure about flash boot
-	// timeout = 12800;
-	// while(timeout--)
-	// 	if(gpio_ishigh(ICE40_SPI_CS))
-	// 		return TIMEOUT;
 	HAL_Delay(2);
 
 	free_flash();
@@ -702,7 +649,6 @@ uint8_t Flash::erase_write(uint16_t esize){
 			gpio_high(ICE40_SPI_CS);
 
 			block += 0x10000;
-			//mode_led_toggle();
 		}
 
 
@@ -834,7 +780,7 @@ uint8_t Flash::stream(uint8_t *data, uint32_t len){
 		}
 		flash_SPI_Enable();
 		state = DETECT;
-		mode_led_low();
+		Bui.set_mode(0);
 	}
 
 	errors += err ? 1 : 0;
