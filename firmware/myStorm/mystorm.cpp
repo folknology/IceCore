@@ -201,7 +201,7 @@ loop(void)
 	// }
 
 	if(gpio_ishigh(MODE_BOOT)) {
-		mode = Bui.mode_toggle();
+		mode = !Bui.mode_toggle();
 		HAL_Delay(1000);
 	}
 }
@@ -418,7 +418,7 @@ BIUI::BIUI(uint8_t status, uint8_t mode){
 
 uint8_t BIUI::mode_toggle(void){
 	mode = mode ? 0 :1;
-	HAL_GPIO_WritePin(GPIOB, STATUS_LED_Pin, (GPIO_PinState)mode);
+	HAL_GPIO_WritePin(GPIOB, MODE_LED_Pin, (GPIO_PinState)mode);
 	return mode;
 }
 
@@ -434,7 +434,7 @@ uint8_t BIUI::set_status(uint8_t state){
 }
 uint8_t BIUI::set_mode(uint8_t state){
 	mode = state;
-	HAL_GPIO_WritePin(GPIOB, STATUS_LED_Pin, (GPIO_PinState)mode);
+	HAL_GPIO_WritePin(GPIOB, MODE_LED_Pin, (GPIO_PinState)mode);
 	return mode;
 }
 
