@@ -71,8 +71,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
 
 /* Classses */
 class BIUI {
-	uint8_t status;
-	uint8_t mode;
+	uint8_t nstatus;
+	uint8_t nmode;
 
 	public:
 		BIUI(uint8_t status, uint8_t mode);
@@ -412,30 +412,30 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 }
 
 BIUI::BIUI(uint8_t status, uint8_t mode){
-	status = status;
-	mode = mode;
+	nstatus = status;
+	nmode = mode;
 }
 
 uint8_t BIUI::mode_toggle(void){
-	mode = mode ? 0 :1;
-	HAL_GPIO_WritePin(GPIOB, MODE_LED_Pin, (GPIO_PinState)mode);
-	return mode;
+	nmode = nmode ? 0 :1;
+	HAL_GPIO_WritePin(GPIOB, MODE_LED_Pin, (GPIO_PinState)nmode);
+	return nmode;
 }
 
 void BIUI::modulate_status(void){
-	if(status)
+	if(nstatus)
 		HAL_GPIO_TogglePin(GPIOB, STATUS_LED_Pin);
 }
 
 uint8_t BIUI::set_status(uint8_t state){
-	status = state;
-	HAL_GPIO_WritePin(GPIOB, STATUS_LED_Pin, (GPIO_PinState)status);
-	return status;
+	nstatus = state;
+	HAL_GPIO_WritePin(GPIOB, STATUS_LED_Pin, (GPIO_PinState)nstatus);
+	return nstatus;
 }
 uint8_t BIUI::set_mode(uint8_t state){
-	mode = state;
-	HAL_GPIO_WritePin(GPIOB, MODE_LED_Pin, (GPIO_PinState)mode);
-	return mode;
+	nmode = state;
+	HAL_GPIO_WritePin(GPIOB, MODE_LED_Pin, (GPIO_PinState)nmode);
+	return nmode;
 }
 
 
