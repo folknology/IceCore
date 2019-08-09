@@ -64,14 +64,12 @@ SRC =  \
 	stm32f7xx_hal_msp.c \
 	system_stm32f7xx.c 
 
-LIB_SRC := $(wildcard $(DRIVERS)/Src/*.c) $(wildcard $(USB)/Core/Src/*.c) $(wildcard $(USB)/Class/CDC/Src/*.c)
+HAL_SRC := $(wildcard $(DRIVERS)/Src/*.c) $(wildcard $(USB)/Core/Src/*.c) $(wildcard $(USB)/Class/CDC/Src/*.c)
 
-LIB_OBJECTS	:= $(addprefix $(OBJ_DIR)/,$(notdir $(LIB_SRC:.c=.o)))
+HAL_OBJECTS	:= $(addprefix $(OBJ_DIR)/,$(notdir $(HAL_SRC:.c=.o)))
 ASM_OBJECTS	:= $(addprefix $(OBJ_DIR)/,$(notdir $(ASM:.s=.o)))
 SRC_OBJECTS	:= $(addprefix $(OBJ_DIR)/,$(notdir $(SRC:.c=.o)))
 CPP_OBJECTS	:= $(addprefix $(OBJ_DIR)/,$(notdir $(CPP:.cpp=.o)))
-
-LIB	= $(OUTPUT_DIR)/drivers.a
 
 # C defines
 C_DEFS =  \
@@ -116,8 +114,8 @@ $(OBJ_DIR)/%.o: %.s
 	$(CC) -c $(ASMFLAGS) $(CPPFLAGS) $(CFLAGS) $< -o $@
 
 PAD = $(OUTPUT_DIR)/$(TARGET).pad
-$(OUTPUT_DIR)/$(TARGET).elf : $(LIB) $(ASM_OBJECTS) $(CPP_OBJECTS) $(SRC_OBJECTS) $(LDSCRIPT)
-	$(CC) $(LDFLAGS) $(ASM_OBJECTS) $(CPP_OBJECTS) $(SRC_OBJECTS) $(LIB) -T$(LDSCRIPT) -o $@
+$(OUTPUT_DIR)/$(TARGET).elf : $(HAL_OBJECTS) $(ASM_OBJECTS) $(CPP_OBJECTS) $(SRC_OBJECTS) $(LDSCRIPT)
+	$(CC) $(LDFLAGS) $(ASM_OBJECTS) $(CPP_OBJECTS) $(SRC_OBJECTS) $(HAL_OBJECTS) -T$(LDSCRIPT) -o $@
 	$(SZ) $@ | tail -1 | awk '{printf "0x%x\n",int((0x08000000+$$1+$$2+7)/8)*8}' > $(PAD)
 
 # dependency rules
@@ -130,17 +128,13 @@ HEADERS := $(wildcard ../Inc/*.h \
 	../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/*.h \
 	../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc/*.h)
 
-$(CPP_OBJECTS) $(SRC_OBJECTS) $(LIB_OBJECTS): $(HEADERS)
-$(ASM_OBJECTS) $(CPP_OBJECTS) $(SRC_OBJECTS) $(LIB_OBJECTS): | $(OBJ_DIR)
+$(CPP_OBJECTS) $(SRC_OBJECTS) $(HAL_OBJECTS): $(HEADERS)
+$(ASM_OBJECTS) $(CPP_OBJECTS) $(SRC_OBJECTS) $(HAL_OBJECTS): | $(OBJ_DIR)
 
 $(OBJ_DIR):
 	-mkdir -p $(OBJ_DIR)
 
-$(LIB): $(LIB_OBJECTS)
-	-rm -f $@
-	$(AR) crv $@ $^
-
-.INTERMEDIATE: $(LIB_OBJECTS)
+.INTERMEDIATE: $(HAL_OBJECTS)
 
 $(OUTPUT_DIR)/$(TARGET).hex : $(OUTPUT_DIR)/$(TARGET).elf
 	$(OC) -O ihex --pad-to `cat $(PAD)` $< $@
