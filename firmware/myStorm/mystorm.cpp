@@ -31,15 +31,15 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "main.h"
-#include "usbd_cdc_if.h"
-#include "stm32f7xx_hal.h"
-#include "errno.h"
-#include "mystorm.h"
-
 #ifdef __cplusplus
  extern "C" {
 #endif
+
+#include "mystorm.h"
+#include "Flash.h"
+#include "usbd_cdc_if.h"
+#include "stm32f7xx_hal.h"
+#include "errno.h"
 
 extern SPI_HandleTypeDef hspi3;
 extern USBD_HandleTypeDef hUsbDeviceFS;
@@ -47,20 +47,12 @@ extern UART_HandleTypeDef huart1;
 extern TIM_HandleTypeDef htim6;
 
 static int mode = 0;
-static int err = 0;
-uint8_t errors = 0;
 
 uint32_t rxi,rxo;
 uint8_t  rxb[RX];
 
 /* functions */
-static void cdc_puts(char *s);
-void flash_Boot_Enable(void);
-void flash_SPI_Enable(void);
-void flash_SPI_Disable(void);
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
-uint8_t flash_id(char *buf, int len);
-uint8_t error_report(char *buf, int len);
+static void cdc_puts(const char *s);
 
 /* Interrupts */
 static int8_t usbcdc_rxcallback(uint8_t *data, uint32_t *len);
@@ -70,95 +62,29 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
 
 /* Classses */
-class BIUI {
-	uint8_t nstatus;
-	uint8_t nmode;
-
-	public:
-		BIUI(uint8_t status, uint8_t mode);
-		uint8_t mode_toggle(void);
-		void modulate_status(void);
-		uint8_t set_status(uint8_t state);
-		uint8_t set_mode(uint8_t state);
-};
-
-
-class Fpga {
-	uint32_t NBYTES;
-	uint8_t state;
-	uint32_t nbytes;
-	union SIG sig =  {0x7E, 0xAA, 0x99, 0x7E} ;
-	
-	public:	
-		Fpga(uint32_t img_size);
-		uint8_t reset(uint8_t bit_src);
-		uint8_t config(void);
-		uint8_t write(uint8_t *p, uint32_t len);
-		uint8_t stream(uint8_t *data, uint32_t len);
-
-};
-
-class Flash {
-	uint32_t NBYTES;
-	uint32_t addr;
-	uint32_t block;
-	uint8_t state;
-	uint8_t pagebuf[256];
-	uint32_t hd;
-	uint32_t nbytes;
-	union SIG sig =  {0x7E, 0xAA, 0x99, 0x7E} ;
-
-	SPI_HandleTypeDef *spi;
-	static const uint8_t WPGE = 0x02;
-	static const uint8_t RPGE = 0x03;
-	static const uint8_t STATUS = 0x05;
-	static const uint8_t WEN = 0x06;
-	static const uint8_t WAKEUP = 0xAB;
-	static const uint8_t ERASE32 = 0x52;
-	static const uint8_t ERASE64 = 0xD8;
-	static const uint8_t ERASEBLK = 0xC7;
-
-	public:
-	Flash(SPI_HandleTypeDef *hspi, uint32_t img_size);
-	uint8_t erase(void);
-	uint8_t erase(uint16_t size);
-	uint8_t status(uint8_t timeout);
-	uint8_t write(uint8_t *p, uint32_t len); // make an SPI class for this
-	uint8_t read(uint8_t *p, uint32_t len); // make an SPI class for this
-	// uint8_t write(uint8_t *addr, uint8_t *data, uint32_t len); // make an SPI class for this
-	uint8_t write_page(uint8_t *data);
-	uint8_t write_byte(uint8_t *data);
-	uint8_t write_read(uint8_t *tx, uint8_t *rx, uint32_t len);
-	uint8_t erase_write(uint16_t esize);
-	uint8_t stream(uint8_t *data, uint32_t len);
-};
-
-
-/* global objects */
-BIUI Bui(1,1);
-Fpga Ice40(IMGSIZE);
-Flash flash(&hspi3, IMGSIZE);
+BIUI Bui(1, 1, 4);
+Fpga Ice40(IMGSIZE, Bui);
+Flash flash(&hspi3, IMGSIZE, Bui, Ice40);
 
 /*
  * Setup function (called once at powerup)
  */
-void
-setup(void)
+void setup(void)
 {
 
 	Bui.set_mode(1);
 
 	// Initiate Ice40 boot from flash
-	flash_Boot_Enable();
+	flash.Boot_Enable();
 	Ice40.reset(FLASH1);
 	HAL_Delay(1000);
 	if(!gpio_ishigh(ICE40_CDONE)){
-		err = ICE_ERROR;
+		Bui.error(ICE_ERROR);
 		cdc_puts("Flash Boot Error\n");
 	} else {
 		Bui.set_status(0);
 	}
-	flash_SPI_Enable();
+	flash.Enable();
 
 	cdc_puts(VER);
 	cdc_puts("\n");
@@ -167,11 +93,11 @@ setup(void)
 	USBD_Interface_fops_FS.Receive = &usbcdc_rxcallback;
 	HAL_TIM_Base_Start_IT(&htim6);
 
-	err = HAL_UART_Receive_IT(&huart1, (uint8_t *)(rxb + rxi), 1);
+	Bui.error(HAL_UART_Receive_IT(&huart1, (uint8_t *)(rxb + rxi), 1));
 
 
-	err = USBD_CDC_ReceivePacket(&hUsbDeviceFS);
-	errors += err ? 1 : 0;
+	Bui.error(USBD_CDC_ReceivePacket(&hUsbDeviceFS));
+	// errors += err ? 1 : 0;
 }
 
 
@@ -209,70 +135,23 @@ loop(void)
  * Write a string to usbcdc, and to uart1 if not detached,
  * adding an extra CR if it ends with LF
  */
-static void cdc_puts(char *s){
+static void cdc_puts(const char *s){
 	char *p;
 
-	for (p = s; *p; p++);
-	err = CDC_Transmit_FS((uint8_t *)s, p - s);
-	errors += err ? 1 : 0;
+	for (p = (char*)s; *p; p++);
+	Bui.error(CDC_Transmit_FS((uint8_t *)s, p - s));
+	// errors += err ? 1 : 0;
 	if (p > s && p[-1] == '\n')
 		cdc_puts("\r");
 }
 
-void flash_Boot_Enable(void){
 
-	__HAL_RCC_SPI3_CLK_DISABLE();
-
-	HAL_GPIO_DeInit(GPIOB, SPI3_SCK_Pin|SPI3_MISO_Pin|SPI3_MOSI_Pin);
-}
-
-void flash_SPI_Enable(void){
-
-	HAL_GPIO_DeInit(GPIOB, SPI3_SCK_Pin|SPI3_MISO_Pin|SPI3_MOSI_Pin);
-
-	GPIO_InitTypeDef GPIO_InitStruct = {0};
-
-	/* Peripheral clock enable */
-	__HAL_RCC_SPI3_CLK_ENABLE();
-
-	__HAL_RCC_GPIOB_CLK_ENABLE();
-
-	GPIO_InitStruct.Pin = SPI3_SCK_Pin|SPI3_MISO_Pin|SPI3_MOSI_Pin;
-	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-	GPIO_InitStruct.Pull = GPIO_NOPULL;
-	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-	GPIO_InitStruct.Alternate = GPIO_AF6_SPI3;
-	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-}
-
-void flash_SPI_Disable(void){
-
-	__HAL_RCC_SPI3_CLK_DISABLE();
-
-	HAL_GPIO_DeInit(GPIOB, SPI3_SCK_Pin|SPI3_MISO_Pin|SPI3_MOSI_Pin);
-
-	GPIO_InitTypeDef GPIO_InitStruct = {0};
-
-	GPIO_InitStruct.Pin = SPI3_MISO_Pin | SPI3_SCK_Pin;
-	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIO_InitStruct.Pull = GPIO_NOPULL;
-	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-	GPIO_InitStruct.Pin = SPI3_MOSI_Pin;
-	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-	GPIO_InitStruct.Pull = GPIO_NOPULL;
-	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-}
 
 /* Get flash id example flash coms */
 uint8_t flash_id(char *buf, int len){
 	int r, i;
 	int l1 = len - 1;
-	Flash flash(&hspi3, IMGSIZE);
+	// Flash flash(&hspi3, IMGSIZE);
 	uint8_t uCommand = 0xAB;
 	uint8_t response[3] = {0,0,0};
 
@@ -306,23 +185,6 @@ uint8_t flash_id(char *buf, int len){
 	return len;
 }
 
-/* errors to char */
-uint8_t error_report(char *buf, int len){
-	buf[0] = '0';
-	buf[1] = 'x';
-	buf[2] = TO_HEX(((errors & 0xF0) >> 4));
-	buf[3] = TO_HEX((errors & 0x0F));
-	buf[4] = '-';
-	buf[5] = 'E';
-	buf[6] = 'R';
-	buf[7] = 'R';
-	buf[8] = 'S';
-	buf[9] = '\n';
-	buf[10] = '\0';
-
-	return 6;
-}
-
 /** TODO remove this
   * @brief  EXTI line detection callbacks.
   * @param  GPIO_Pin Specifies the pins connected EXTI line
@@ -340,22 +202,23 @@ static int8_t usbcdc_rxcallback(uint8_t *data, uint32_t *len){
 
 	USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &data[0]);
 
-	if(*len)
+	if(*len) {
 		if(mode){
 			if(!flash.stream(data,*len)) {
-				err = HAL_UART_Transmit_DMA(&huart1, data, *len);
+				Bui.error(HAL_UART_Transmit_DMA(&huart1, data, *len));
 				return USBD_OK;
 			}
 			
 		} else {
 			if(!Ice40.stream(data, *len)){
-				err = HAL_UART_Transmit_DMA(&huart1, data, *len);
+				Bui.error(HAL_UART_Transmit_DMA(&huart1, data, *len));
 				return USBD_OK;
 			}
 		}
+	}
 
-	err = USBD_CDC_ReceivePacket(&hUsbDeviceFS);
-	errors += err ? 1 : 0;
+	Bui.error(USBD_CDC_ReceivePacket(&hUsbDeviceFS));
+	// errors += err ? 1 : 0;
 
 	return USBD_OK;
 }
@@ -368,8 +231,8 @@ static int8_t usbcdc_rxcallback(uint8_t *data, uint32_t *len){
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
   /* Prevent unused argument(s) compilation warning */
   UNUSED(huart);
-  err = USBD_CDC_ReceivePacket(&hUsbDeviceFS);
-  errors += err ? 1 : 0;
+  Bui.error(USBD_CDC_ReceivePacket(&hUsbDeviceFS));
+//   errors += err ? 1 : 0;
 }
 
 
@@ -381,16 +244,16 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart){
   /* Prevent unused argument(s) compilation warning */
   UNUSED(huart);
-	err = huart->ErrorCode;
-	errors += err ? 1 : 0;
+	Bui.error(huart->ErrorCode);
+	// errors += err ? 1 : 0;
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){	
   /* Prevent unused argument(s) compilation warning */
 	UNUSED(huart);
   	rxi = (++rxi == RX) ? 0 : rxi;
-	err = HAL_UART_Receive_IT(huart, (uint8_t *)(rxb + rxi), 1);
-	errors += err ? 1 : 0;
+	Bui.error(HAL_UART_Receive_IT(huart, (uint8_t *)(rxb + rxi), 1));
+	// errors += err ? 1 : 0;
 }
 
 /**
@@ -409,383 +272,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 		if(CDC_Transmit_FS(&rxb[bp], bs) == 0U)
 			rxo = (rxo == RX) ? 0 : rxo + bs;
 	}
-}
-
-BIUI::BIUI(uint8_t status, uint8_t mode){
-	nstatus = status;
-	nmode = mode;
-}
-
-uint8_t BIUI::mode_toggle(void){
-	nmode = nmode ? 0 :1;
-	HAL_GPIO_WritePin(GPIOB, MODE_LED_Pin, (GPIO_PinState)nmode);
-	return nmode;
-}
-
-void BIUI::modulate_status(void){
-	if(nstatus)
-		HAL_GPIO_TogglePin(GPIOB, STATUS_LED_Pin);
-}
-
-uint8_t BIUI::set_status(uint8_t state){
-	nstatus = state;
-	HAL_GPIO_WritePin(GPIOB, STATUS_LED_Pin, (GPIO_PinState)nstatus);
-	return nstatus;
-}
-uint8_t BIUI::set_mode(uint8_t state){
-	nmode = state;
-	HAL_GPIO_WritePin(GPIOB, MODE_LED_Pin, (GPIO_PinState)nmode);
-	return nmode;
-}
-
-
-Fpga::Fpga(uint32_t img_size){
-	NBYTES = img_size;
-	state = DETECT;
-}
-
-uint8_t Fpga::reset(uint8_t bit_src){
-	int timeout = 100;
-
-	gpio_low(ICE40_CRST);
-
-	// Determine FPGA image source, config Flash
-	switch(bit_src){
-		case MCNTRL : // STM32 master prog, disable flash
-			gpio_low(ICE40_SPI_CS);
-			protect_flash();
-			hold_flash();
-			break;
-		case FLASH0 : // CBSDEL=00 Flash
-			gpio_high(ICE40_SPI_CS);
-			hold_flash();
-			protect_flash();
-			break;
-		case FLASH1 : // CBSDEL=01 Flash
-			gpio_high(ICE40_SPI_CS);
-			release_flash();
-			protect_flash();
-			break;
-	}
-
-	while(timeout--)
-		if(gpio_ishigh(ICE40_CRST))
-			return TIMEOUT;
-
-	gpio_high(ICE40_CRST);
-
-	// Neede for STM src
-	timeout = 100;
-	while (gpio_ishigh(ICE40_CDONE)) {
-		if (--timeout == 0)
-			return TIMEOUT;
-	}
-	HAL_Delay(2);
-
-	free_flash();
-	release_flash();
-	return OK;
-}
-
-uint8_t Fpga::config(void){
-	uint8_t b = 0;
-
-	for (int timeout = 100; !gpio_ishigh(ICE40_CDONE); timeout--) {
-		if (timeout == 0) {
-			//cdc_puts("CDONE not set\n");
-			return ICE_ERROR;
-		}
-		write(&b, 1);
-	}
-
-	for (int i = 0; i < 7; i++)
-		write(&b, 1);
-
-	gpio_high(ICE40_SPI_CS);
-
-	return OK;
-}
-
-uint8_t Fpga::write(uint8_t *p, uint32_t len){
-	uint32_t i;
-	uint8_t ret,b,d;
-
-	ret = HAL_OK;
-	for(i = 0; i < len; i++)
-	{
-		d = *p++;
-		for(b = 0; b < 8; b++){
-			if(d & 0x80) {
-				HAL_GPIO_WritePin(GPIOB,SPI3_SCK_Pin,GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(GPIOB,SPI3_MISO_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(GPIOB,SPI3_SCK_Pin,GPIO_PIN_SET);
-			} else {
-				HAL_GPIO_WritePin(GPIOB,SPI3_MISO_Pin | SPI3_SCK_Pin,GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(GPIOB,SPI3_SCK_Pin,GPIO_PIN_SET);
-			}
-			d <<= 1;
-		}
-		gpio_high(SPI3_SCK);
-	}
-	return ret;
-}
-
-uint8_t Fpga::stream(uint8_t *data, uint32_t len){
-	uint32_t *word;
-	uint8_t *img;
-
-
-	switch(state) {
-		case DETECT: // Lets look for the Ice40 image or just pass bytes to Uart
-			img = data + 4;
-			word = (uint32_t *) img;
-			if(*word == sig.word){ // We are inside the 1st 4 bytes Ice40 image
-				nbytes = 0;
-				Bui.set_status(1);
-				flash_SPI_Disable();
-				if (err = reset(MCNTRL)) 
-					flash_SPI_Enable(); 
-				else { // Write bytes (assumes *len < NBYTES)
-					nbytes += len - 4;
-					write(img, len - 4);
-					state = PROG;
-				}
-			} else
-				return 0;
-			break;
-		case PROG: // We are now in the Ice40 image
-			nbytes += len;
-			write(data, len);
-			break;
-	}
-
-	if(nbytes >= NBYTES) {
-		if(err = config())
-			Bui.set_status(1);
-		else
-			Bui.set_status(0);
-		flash_SPI_Enable();
-		state = DETECT;
-	}
-
-	errors += err ? 1 : 0;
-
-	return 1;
-}
-
-
-Flash::Flash(SPI_HandleTypeDef *hspi, uint32_t img_size){
-	NBYTES = img_size;
-	spi = hspi;
-	state = DETECT;
-}
-
-uint8_t Flash::write(uint8_t *p, uint32_t len){
-	return HAL_SPI_Transmit(spi, p, len, HAL_UART_TIMEOUT_VALUE);
-}
-
-uint8_t Flash::read(uint8_t *p, uint32_t len){
-	return HAL_SPI_Receive(spi, p, len, HAL_UART_TIMEOUT_VALUE);
-}
-
-// uint8_t Flash::write(uint8_t *addr, uint8_t *data, uint32_t len){
-// 	return HAL_SPI_Transmit(spi, data, len, HAL_UART_TIMEOUT_VALUE);
-// }
-
-uint8_t Flash::write_page(uint8_t *data){
-	uint8_t pre[4] = {WPGE, addr >> 16, addr >> 8, addr};
-	HAL_SPI_Transmit(spi, pre, 4, HAL_UART_TIMEOUT_VALUE);
-	return HAL_SPI_Transmit(spi, data, 256, HAL_UART_TIMEOUT_VALUE);
-}
-
-uint8_t Flash::write_byte(uint8_t *data){
-	uint8_t pre[5] = {WPGE, addr >> 16, addr >> 8, addr, *data};
-	return HAL_SPI_Transmit(spi, pre, 5, HAL_UART_TIMEOUT_VALUE);
-}
-
-uint8_t Flash::write_read(uint8_t *tx, uint8_t *rx, uint32_t len){
-	return HAL_SPI_TransmitReceive(spi, tx, rx, len, HAL_UART_TIMEOUT_VALUE);
-}
-
-uint8_t Flash::erase(void){
-	uint8_t e = ERASEBLK;
-	return HAL_SPI_Transmit(spi, &e, 1, HAL_UART_TIMEOUT_VALUE);
-}
-
-uint8_t Flash::erase(uint16_t esize){
-	uint8_t pre[4] = {(esize == 32) ? ERASE32 : ERASE64, block >> 16, block >> 8, block};
-	return HAL_SPI_Transmit(spi, pre, 4, HAL_UART_TIMEOUT_VALUE);
-}
-
-uint8_t Flash::erase_write(uint16_t esize){
-	uint32_t end = addr + hd;
-	uint8_t *page;
-	uint16_t wsize;
-	uint8_t wen = WEN;
-	uint8_t rs, sts = STATUS;
-
-	page = pagebuf;
-
-	while(addr < end){
-		wsize = (end - addr) > 255 ? 256 : end - addr;
-
-		if((addr + wsize) >= block) { 
-
-			gpio_low(ICE40_SPI_CS);
-			write(&wen,1);
-			gpio_high(ICE40_SPI_CS);
-
-			gpio_low(ICE40_SPI_CS);
-			erase(ERASE64);
-			gpio_high(ICE40_SPI_CS);
-
-			HAL_Delay(500); // 2200
-			
-			gpio_low(ICE40_SPI_CS);
-			write(&sts,1);
-			do {
-				read(&rs,1);
-			} while (rs & 0x01);//WEL bit?
-			gpio_high(ICE40_SPI_CS);
-
-			block += 0x10000;
-		}
-
-
-		if(wsize == 256){ // Page write
-
-			gpio_low(ICE40_SPI_CS);
-			write(&wen,1);
-			gpio_high(ICE40_SPI_CS);
-
-			gpio_low(ICE40_SPI_CS);
-			write_page(page);
-			gpio_high(ICE40_SPI_CS);
-
-			HAL_Delay(2);
-
-			gpio_low(ICE40_SPI_CS);
-			write(&sts,1);
-			do {
-				read(&rs,1);
-			} while (rs & 0x01);
-			gpio_high(ICE40_SPI_CS);
-
-			addr += wsize;
-			page += wsize;
-
-		} else { // remainder less than page size, byte writes
-			for(uint8_t i = 0; i < wsize; i++){
-
-				gpio_low(ICE40_SPI_CS);
-				write(&wen,1);
-				gpio_high(ICE40_SPI_CS);
-
-				gpio_low(ICE40_SPI_CS);
-				write_byte(page++);
-				gpio_high(ICE40_SPI_CS);
-
-				gpio_low(ICE40_SPI_CS);
-				write(&sts,1);
-				do {
-					read(&rs,1);
-				} while (rs & 0x01);
-				gpio_high(ICE40_SPI_CS);
-
-				addr++;
-			}
-		}
-	
-	}
-	return 0;
-}
-
-uint8_t Flash::status(uint8_t timeout){
-	uint8_t rs,s= STATUS;
-	if(!HAL_SPI_Transmit(spi, &s, 1, HAL_UART_TIMEOUT_VALUE))
-		do {
-			rs = HAL_SPI_Receive(spi, &rs, 1, HAL_UART_TIMEOUT_VALUE);
-
-		} while(timeout-- && rs & 0x01);
-	return rs;
-}
-
-uint8_t Flash::stream(uint8_t *data, uint32_t len){
-	uint32_t *word;
-	uint8_t *img;
-	uint8_t cmd = WAKEUP;
-	uint32_t end = nbytes + len;
-
-	switch(state) {
-		case DETECT: // Lets look for the Ice40 image or just pass bytes to Uart
-			img = data + 4;
-			word = (uint32_t *) img;
-			if(*word == sig.word){ // We are inside the 1st 4 bytes Ice40 image
-				nbytes = 0;
-				Bui.set_status(1);
-				 // Write bytes (assumes *len < NBYTES)
-				nbytes += len- 4;
-				addr = 0;
-				block = 0;
-
-				release_flash();
-				free_flash();
-				
-				gpio_low(ICE40_SPI_CS);
-				write(&cmd, 1);
-				gpio_high(ICE40_SPI_CS);
-
-				// Buffer prog data packet, assumes packet < 256
-				for(hd = 0; hd < nbytes; hd++)
-					pagebuf[hd] = *img++;
-
-				state = PROG; // could return bytes writter here addr - 0 to indicate from comman caller how well we did, it could then get us to try again maybe?
-			} else
-				return 0;
-			break;
-		case PROG: // We are now in the Ice40 image
-			img = data;
-			
-			while (nbytes < end ){
-				nbytes++;
-				pagebuf[hd++] = *img++;
-				if( (nbytes >= NBYTES) || (hd == 256) ) { // Lets write flash page/remainder
-					if(erase_write(ERASE64)) 
-						err = 1;
-					hd = 0;
-					if(nbytes >= NBYTES) 
-						break;
-				} 
-			}
-			break;
-	}
-
-
-
-	if(nbytes >= NBYTES) { // we cannot rely on NBYTES for general flash prog...
-		flash_Boot_Enable();
-		if(err = Ice40.reset(FLASH1))
-			Bui.set_status(1);
-		else 
-			Bui.set_status(0);
-
-		HAL_Delay(1000);
-
-		if(!gpio_ishigh(ICE40_CDONE)){
-			err = ICE_ERROR;
-			Bui.set_status(1);
-			//cdc_puts("Flash Boot Error\n");
-		} else {
-			Bui.set_status(0);
-		}
-		flash_SPI_Enable();
-		state = DETECT;
-		Bui.set_mode(0);
-	}
-
-	errors += err ? 1 : 0;
-
-	return 1;
 }
 
 #ifdef __cplusplus

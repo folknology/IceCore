@@ -9,6 +9,10 @@
 
 TARGET	= mystorm
 CPP	= mystorm.cpp \
+		BUI.cpp \
+		Spi.cpp \
+		Flash.cpp \
+		FPGA.cpp \
 		main.cpp
 OCDCONFIG = stlink.cfg
 
@@ -46,6 +50,7 @@ INCLUDE	= \
 	-I$(DRIVERS)/Inc \
 	-I$(DRIVERS)/Inc/Legacy \
 	-I$(CMSIS)/Include \
+	-I../mystorm-inc
 
 VPATH	= \
 	$(DRIVERS)/Src \
@@ -76,7 +81,7 @@ C_DEFS =  \
 -DUSE_HAL_DRIVER \
 -DSTM32F730xx
 
-GCCPATH = /home/awood/arm-gcc/gcc-arm-none-eabi-8-2018-q4-major/bin
+GCCPATH = /mnt/c/Users/awood/arm-gcc/gcc-arm-none-eabi-8-2019-q3-update/bin
 
 # toolchain definitions
 CP	= $(GCCPATH)/arm-none-eabi-g++

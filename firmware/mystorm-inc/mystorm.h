@@ -1,3 +1,8 @@
+#ifndef __MYSTORM_H
+#define __MYSTORM_H
+
+#include "main.h"
+
 #define SPI3_MOSI_Pin GPIO_PIN_5
 #define SPI3_MOSI_GPIO_Port GPIOB
 #define SPI3_MISO_Pin GPIO_PIN_4
@@ -23,18 +28,22 @@
 #define TO_HEX(i) (i <= 9 ? '0' + i : 'A' - 10 + i)
 
 enum { OK, TIMEOUT, ICE_ERROR };
-
+enum { DETECT, PROG};
 enum { 
 	MCNTRL = 0, 
 	FLASH0, 
 	FLASH1
-} SOURCE_IMAGE;
-
-enum { DETECT, PROG} STATES;
-// static uint8_t state = DETECT;
-// static uint32_t nbytes;
+};
 
 union SIG {
 	uint8_t b[4];
 	uint32_t word;
 };
+
+/* functions */
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
+uint8_t flash_id(char *buf, int len);
+uint8_t error_report(char *buf, int len);
+
+#endif /* __MYSTORM_H */
+
