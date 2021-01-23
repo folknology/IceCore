@@ -1,0 +1,163 @@
+###############################################################################
+#                                                                             #
+# Copyright 2017 myStorm Copyright and related                                #
+# rights are licensed under the Solderpad Hardware License, Version 0.51      #
+# (the “License”); you may not use this file except in compliance with        #
+# the License. You may obtain a copy of the License at                        #
+# http://solderpad.org/licenses/SHL-0.51. Unless required by applicable       #
+# law or agreed to in writing, software, hardware and materials               #
+# distributed under this License is distributed on an “AS IS” BASIS,          #
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or             #
+# implied. See the License for the specific language governing                #
+# permissions and limitations under the License.                              #
+#                                                                             #
+###############################################################################
+
+# User Constraint File for myStorm BlackIce Mx   - Alan Wood 30-04-2019
+
+# HDMI
+set_io TD2P 48 # B80 TD2+
+set_io TD2M 47 # B79 TD2-
+set_io TD1P 45 # B73 TD1+
+set_io TD1M 44 # B72 TD1-
+set_io TD0P 43 # B71 TD0+
+set_io TD0M 42 # B64 TD0-
+set_io CKP 41 # B63 CK+
+set_io CKM 39 # B61 CK-
+
+#pmod 1
+set_io PMOD_0 38 # P8, B57
+set_io PMOD_1 37 # P9, B56
+set_io PMOD_2 32 # P12, 24b
+set_io PMOD_3 31 # P13, 24a
+
+#pmod 2
+set_io PMOD_4 34 # P10, 25b
+set_io PMOD_5 33 # P11, 25a
+set_io PMOD_6 29 # P14, 23b
+set_io PMOD_7 28 # P15, 23a
+
+#pmod 3
+set_io PMOD_8 18 # P24, 12b
+set_io PMOD_9 17 # P25, 12a
+set_io PMOD_10 12 # P28, 8b
+set_io PMOD_11 11 # P29 8a
+
+#pmod 4
+set_io PMOD_12 16 # P26, 10b
+set_io PMOD_13 15 # P27 10a
+set_io PMOD_14 10 # P30, 5b
+set_io PMOD_15 9 # P31, 5a
+
+#pmod 5 
+set_io PMOD_16 136 # P45, T214
+set_io PMOD_17 137 # P44, T215
+set_io PMOD_18 134 # P47, T212
+set_io PMOD_19 135 # p46, T213
+
+#pmod 6
+set_io PMOD_20 141 # P41, T219
+set_io PMOD_21 142 # P40, T220
+set_io PMOD_22 138 # P43, T216
+set_io PMOD_23 139 # P42, T217
+
+#pmod 7
+set_io PMOD_24 1 # P37, 2a
+set_io PMOD_25 2 # P36, 2b
+set_io PMOD_26 7 # P33, 4a
+set_io PMOD_27 8 # P32, 4b
+
+#pmod 8
+set_io PMOD_28 143 # P39, T221
+set_io PMOD_29 144 # P38, T222
+set_io PMOD_30 3 # P35, 3a
+set_io PMOD_31 4 # P34, 3b
+
+#pmod 9
+set_io PMOD_32 106 # P55, SD1
+set_io PMOD_33 105 # P54, SD0 
+set_io PMOD_34 101 # P51, SD3
+set_io PMOD_35 99 # p50, SD2
+
+#pmod 10
+set_io PMOD_36 104 # P53, SDCLK
+set_io PMOD_37 102 # P52, SDCMD
+set_io PMOD_38 49 # P49, L0, S2, Blue Led
+set_io PMOD_39 52 # p48, L1, S1, Green led
+
+#pmod 11
+set_io PMOD_40 19 # P23, 13a
+set_io PMOD_41 20 # P22, 13b/GBin7
+set_io PMOD_42 23 # P19, 17a
+set_io PMOD_43 24 # P18, 17b
+
+#pmod 12
+set_io PMOD_44 21 # 14a/GBin6
+set_io PMOD_45 22 # 14b
+set_io PMOD_46 25 # 18a
+set_io PMOD_47 26 # 18b
+
+# SRAM
+set_io A_0 117
+set_io A_1 119
+set_io A_2 121
+set_io A_3 124
+set_io A_4 130
+set_io A_5 125
+set_io A_6 122
+set_io A_7 120
+set_io A_8 118
+set_io A_9 116
+set_io A_10 115
+set_io A_11 114
+
+set_io udqm 94
+set_io ldqm 93
+set_io we 107
+set_io cas 110
+set_io ras 112
+set_io mcs 113
+set_io cke 128
+set_io rclk 129
+
+set_io DQ_0 78
+set_io DQ_1 79
+set_io DQ_2 80
+set_io DQ_3 81
+set_io DQ_4 82
+set_io DQ_5 83
+set_io DQ_6 84
+set_io DQ_7 85
+set_io DQ_8 87
+set_io DQ_9 88
+set_io DQ_10 90
+set_io DQ_11 91
+set_io DQ_12 95
+set_io DQ_13 96
+set_io DQ_14 97
+set_io DQ_15 98
+
+# Dual SPI
+set_io io0 73
+set_io io1 74
+set_io dcs 75
+set_io dsck 76
+
+# QSpi
+set_io hold 63
+set_io wp 64
+set_io mosi 67
+set_io miso 68
+set_io sck 70
+set_io ss 71
+
+# Uart
+set_io tx 61
+set_io rx 62
+
+
+set_io yellow_led 55
+set_io red_led 56
+
+# Onboard 25Mhz oscillator
+set_io clk 60

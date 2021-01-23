@@ -1,0 +1,27 @@
+PIN_DEF = blackice-mx.pcf
+DEVICE = hx8k
+PROJ=blackicemx_pins
+
+all: $(PROJ).rpt $(PROJ).bin
+
+%.blif: %.v
+	yosys -p 'synth_ice40 -top blackicemx_pins -json $(PROJ).json -blif $@' $<
+
+%.asc: $(PIN_DEF) %.blif
+	nextpnr-ice40 -r --$(DEVICE) --package tq144:4k  --json $(PROJ).json --asc $(PROJ).asc --opt-timing --pcf $(PIN_DEF)
+
+%.bin: %.asc
+	icepack $< $@
+
+%.rpt: %.asc
+	icetime -d $(DEVICE) -mtr $@ $<
+
+prog: $(PROJ).bin
+	stty -F /dev/ttyACM0 raw
+	cat $< > /dev/ttyACM0
+
+clean:
+	rm -f $(PROJ).blif $(PROJ).asc $(PROJ).rpt $(PROJ).bin $(PROJ).json
+
+.SECONDARY:
+.PHONY: all prog clean

@@ -1,0 +1,10 @@
+
+A simple example design for the IcoBaord that outputs a 9600 baud TTL-level
+RS232 signal (+3.3V, non-inverted) on all GPIO pins. The RS232 signal written
+to each pin is an ASCII string that identifies the GPIO pin.
+
+For example, the top-left GPIO pin on the 100 mil matrix will output the
+string "matrix_00: C13\r\n" in a loop.
+
+The generate.py script reads the pinout directly from 'icoboard.pcf'.
+
